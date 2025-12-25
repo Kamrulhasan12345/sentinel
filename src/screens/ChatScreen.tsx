@@ -1,28 +1,28 @@
-import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
   View,
 } from "react-native";
-import { useTensorflowModel } from "react-native-fast-tflite";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+// 1. Import your new high-performance services
+import { Classifier } from "../services/ClassifierEngine";
+import { FirstAidContent, KnowledgeBase } from "../services/KnowledgeBase";
+
+import { SEVERITY_MAP, TriageLevel } from "@/constants/SeverityMap";
+import { useVoiceToText } from "@/hooks/useVoiceToText";
 import {
   ActivityIndicator,
   Card,
   IconButton,
-  Paragraph,
   Text,
   TextInput,
   useTheme,
 } from "react-native-paper";
-import { analyzeUserInput } from "../services/aiService";
-import {
-  EmergencyProtocol,
-  getEmergencyProtocol,
-} from "../services/triageService";
 
 interface Message {
   id: string;
@@ -30,22 +30,31 @@ interface Message {
   sender: "user" | "bot";
   timestamp: Date;
   imageUri?: string;
-  protocol?: EmergencyProtocol;
+  firstAid?: FirstAidContent;
+  triageLevel?: TriageLevel;
+  confidence?: number;
 }
 
 export default function ChatScreen() {
   const theme = useTheme();
-  const textModelHook = useTensorflowModel(
-    require("../assets/models/mobilebert.tflite"),
-  );
-  const imageModelHook = useTensorflowModel(
-    require("../assets/models/mobilenet_v2.tflite"),
-  );
+  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // 2. Initialize the AI Engine on mount
+  useEffect(() => {
+    Classifier.initialize();
+  }, []);
+
+  const { isListening, startListening, stopListening } = useVoiceToText(
+    (transcript) => {
+      setInputText(transcript); // Fill the text box with what they said
+    },
+  );
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Hello! I'm your medical assistant. Describe your symptoms or send an image for assessment.",
+      text: "Hello! I'm your medical assistant. Describe your symptoms for an immediate first-aid assessment.",
       sender: "bot",
       timestamp: new Date(),
     },
@@ -53,16 +62,18 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
+  // Update the function signature
   const addMessage = (
     text: string,
     sender: "user" | "bot",
     imageUri?: string,
-    protocol?: EmergencyProtocol,
+    firstAid?: FirstAidContent,
+    triageLevel: TriageLevel = TriageLevel.ROUTINE,
+    confidence?: number,
   ) => {
     const newMessage: Message = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -70,7 +81,9 @@ export default function ChatScreen() {
       sender,
       timestamp: new Date(),
       imageUri,
-      protocol,
+      firstAid,
+      triageLevel,
+      confidence,
     };
     setMessages((prev) => [...prev, newMessage]);
   };
@@ -83,142 +96,153 @@ export default function ChatScreen() {
     addMessage(userMessage, "user");
 
     setIsLoading(true);
-    addMessage("Analyzing your input...", "bot");
 
     try {
-      // Run AI inference
-      const analysisResult = await analyzeUserInput(
-        { text: userMessage },
-        { textModel: textModelHook.model },
+      // Inside handleSendMessage
+      const prediction = await Classifier.predict(userMessage);
+      const content = await KnowledgeBase.getValidatedContent(
+        prediction.tag,
+        prediction.confidence,
       );
 
-      // Map to emergency protocol
-      const protocol = getEmergencyProtocol(analysisResult);
+      // Look up severity
+      const severity = SEVERITY_MAP[prediction.tag] || TriageLevel.ROUTINE;
 
-      // Remove loading message
-      setMessages((prev) => prev.slice(0, -1));
-
-      // Add AI response with protocol
-      addMessage(protocol.response, "bot", undefined, protocol);
+      if (content) {
+        addMessage(
+          `I've identified this as ${content.title}.`,
+          "bot",
+          undefined,
+          content,
+          severity,
+          prediction.confidence,
+        );
+      } else {
+        addMessage(
+          "I'm not entirely sure about that. If it's an emergency, please call 911 immediately.",
+          "bot",
+        );
+      }
     } catch (error) {
       console.error("Analysis error:", error);
-      setMessages((prev) => prev.slice(0, -1));
-      addMessage(
-        "Sorry, I encountered an error analyzing your input. Please try again.",
-        "bot",
-      );
+      addMessage("System error. Please seek medical help if urgent.", "bot");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleImagePick = async () => {
-    // Request permissions
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+  // const handleImagePick = async () => {
+  //   // Request permissions
+  //   const permissionResult =
+  //     await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (!permissionResult.granted) {
-      addMessage(
-        "Camera roll permissions are required to upload images.",
-        "bot",
-      );
-      return;
-    }
+  //   if (!permissionResult.granted) {
+  //     addMessage(
+  //       "Camera roll permissions are required to upload images.",
+  //       "bot",
+  //     );
+  //     return;
+  //   }
 
-    // Launch image picker
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
+  //   // Launch image picker
+  //   const result = await ImagePicker.launchImageLibraryAsync({
+  //     mediaTypes: ImagePicker.MediaTypeOptions.Images,
+  //     allowsEditing: true,
+  //     quality: 0.8,
+  //   });
 
-    if (!result.canceled && result.assets[0]) {
-      const imageUri = result.assets[0].uri;
+  //   if (!result.canceled && result.assets[0]) {
+  //     const imageUri = result.assets[0].uri;
 
-      addMessage("Image uploaded", "user", imageUri);
-      setIsLoading(true);
-      addMessage("Analyzing image...", "bot");
+  //     addMessage("Image uploaded", "user", imageUri);
+  //     setIsLoading(true);
+  //     addMessage("Analyzing image...", "bot");
 
-      try {
-        // Run AI inference on image
-        const analysisResult = await analyzeUserInput(
-          { imageUri },
-          { imageModel: imageModelHook.model },
-        );
+  //     try {
+  //       // Run AI inference on image
+  //       const analysisResult = await analyzeUserInput(
+  //         { imageUri },
+  //         { imageModel: imageModelHook.model },
+  //       );
 
-        // Map to emergency protocol
-        const protocol = getEmergencyProtocol(analysisResult);
+  //       // Map to emergency protocol
+  //       const protocol = getEmergencyProtocol(analysisResult);
 
-        // Remove loading message
-        setMessages((prev) => prev.slice(0, -1));
+  //       // Remove loading message
+  //       setMessages((prev) => prev.slice(0, -1));
 
-        // Add AI response with protocol
-        addMessage(protocol.response, "bot", undefined, protocol);
-      } catch (error) {
-        console.error("Image analysis error:", error);
-        setMessages((prev) => prev.slice(0, -1));
-        addMessage(
-          "Sorry, I encountered an error analyzing the image. Please try again.",
-          "bot",
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
+  //       // Add AI response with protocol
+  //       addMessage(protocol.response, "bot", undefined, protocol);
+  //     } catch (error) {
+  //       console.error("Image analysis error:", error);
+  //       setMessages((prev) => prev.slice(0, -1));
+  //       addMessage(
+  //         "Sorry, I encountered an error analyzing the image. Please try again.",
+  //         "bot",
+  //       );
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   }
+  // };
 
-  const handleCameraCapture = async () => {
-    // Request camera permissions
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+  // const handleCameraCapture = async () => {
+  //   // Request camera permissions
+  //   const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
-    if (!permissionResult.granted) {
-      addMessage("Camera permissions are required to take photos.", "bot");
-      return;
-    }
+  //   if (!permissionResult.granted) {
+  //     addMessage("Camera permissions are required to take photos.", "bot");
+  //     return;
+  //   }
 
-    // Launch camera
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 0.8,
-    });
+  //   // Launch camera
+  //   const result = await ImagePicker.launchCameraAsync({
+  //     allowsEditing: true,
+  //     quality: 0.8,
+  //   });
 
-    if (!result.canceled && result.assets[0]) {
-      const imageUri = result.assets[0].uri;
+  //   if (!result.canceled && result.assets[0]) {
+  //     const imageUri = result.assets[0].uri;
 
-      addMessage("Photo captured", "user", imageUri);
-      setIsLoading(true);
-      addMessage("Analyzing photo...", "bot");
+  //     addMessage("Photo captured", "user", imageUri);
+  //     setIsLoading(true);
+  //     addMessage("Analyzing photo...", "bot");
 
-      try {
-        // Run AI inference on image
-        const analysisResult = await analyzeUserInput(
-          { imageUri },
-          { imageModel: imageModelHook.model },
-        );
+  //     try {
+  //       // Run AI inference on image
+  //       const analysisResult = await analyzeUserInput(
+  //         { imageUri },
+  //         { imageModel: imageModelHook.model },
+  //       );
 
-        // Map to emergency protocol
-        const protocol = getEmergencyProtocol(analysisResult);
+  //       // Map to emergency protocol
+  //       const protocol = getEmergencyProtocol(analysisResult);
 
-        // Remove loading message
-        setMessages((prev) => prev.slice(0, -1));
+  //       // Remove loading message
+  //       setMessages((prev) => prev.slice(0, -1));
 
-        // Add AI response with protocol
-        addMessage(protocol.response, "bot", undefined, protocol);
-      } catch (error) {
-        console.error("Photo analysis error:", error);
-        setMessages((prev) => prev.slice(0, -1));
-        addMessage(
-          "Sorry, I encountered an error analyzing the photo. Please try again.",
-          "bot",
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
+  //       // Add AI response with protocol
+  //       addMessage(protocol.response, "bot", undefined, protocol);
+  //     } catch (error) {
+  //       console.error("Photo analysis error:", error);
+  //       setMessages((prev) => prev.slice(0, -1));
+  //       addMessage(
+  //         "Sorry, I encountered an error analyzing the photo. Please try again.",
+  //         "bot",
+  //       );
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   }
+  // };
 
   const renderMessage = (message: Message) => {
     const isUser = message.sender === "user";
+    const getConfidenceColor = (score: number) => {
+      if (score > 0.9) return "#4CAF50";
+      if (score > 0.7) return "#FF9800";
+      return "#F44336";
+    };
 
     return (
       <View
@@ -239,33 +263,59 @@ export default function ChatScreen() {
               <Image
                 source={{ uri: message.imageUri }}
                 style={styles.messageImage}
-                resizeMode="cover"
               />
             )}
-            <Paragraph
+            <Text
+              variant="bodyMedium"
               style={isUser ? styles.userMessageText : styles.botMessageText}
             >
               {message.text}
-            </Paragraph>
-
-            {message.protocol && (
+            </Text>
+            {/* Displaying your First Aid Instructions */}
+            {message.firstAid && (
               <View style={styles.protocolContainer}>
                 <Text style={styles.protocolTitle}>
-                  Triage Level: {message.protocol.level}
+                  {message.firstAid.title}
                 </Text>
-                {message.protocol.condition && (
-                  <Text style={styles.protocolCondition}>
-                    Condition: {message.protocol.condition}
-                  </Text>
-                )}
                 <Text style={styles.protocolSteps}>
-                  {message.protocol.steps.join("\n• ")}
+                  {message.firstAid.instructions
+                    .map((step) => `• ${step}`)
+                    .join("\n")}
                 </Text>
-                {message.protocol.shouldCallEmergency && (
-                  <Text style={styles.emergencyWarning}>
-                    ⚠️ CALL EMERGENCY SERVICES IMMEDIATELY
-                  </Text>
+                {/* --- ADD LIFE THREATENING STUFF HERE --- */}
+                {message.triageLevel === TriageLevel.CRITICAL && (
+                  <View style={styles.criticalActionContainer}>
+                    {/* <View style={styles.divider} /> */}
+                    <Text style={styles.emergencyWarningText}>
+                      ⚠️ THIS IS A LIFE-THREATENING EMERGENCY
+                    </Text>
+                    <IconButton
+                      icon="phone-outline"
+                      mode="contained"
+                      containerColor="#D32F2F"
+                      iconColor="white"
+                      size={30}
+                      style={styles.emergencyButton}
+                      onPress={() => Linking.openURL("tel:911")}
+                    />
+                    <Text style={styles.tapToCall}>
+                      Tap to call Emergency Services
+                    </Text>
+                  </View>
                 )}
+              </View>
+            )}
+            {message.confidence && (
+              <View style={styles.badgeContainer}>
+                <View
+                  style={[
+                    styles.dot,
+                    { backgroundColor: getConfidenceColor(message.confidence) },
+                  ]}
+                />
+                <Text style={styles.confidenceText}>
+                  AI Confidence: {(message.confidence * 100).toFixed(1)}%
+                </Text>
               </View>
             )}
           </Card.Content>
@@ -284,38 +334,41 @@ export default function ChatScreen() {
         ref={scrollViewRef}
         style={styles.messagesContainer}
         contentContainerStyle={styles.messagesContent}
-        onContentSizeChange={() =>
-          scrollViewRef.current?.scrollToEnd({ animated: true })
-        }
+        keyboardShouldPersistTaps="handled"
       >
         {messages.map(renderMessage)}
       </ScrollView>
 
-      <View style={styles.inputContainer}>
-        <IconButton
-          icon="camera"
-          size={24}
-          onPress={handleCameraCapture}
-          disabled={isLoading}
-          iconColor={theme.colors.primary}
-        />
-        <IconButton
-          icon="image"
-          size={24}
-          onPress={handleImagePick}
-          disabled={isLoading}
-          iconColor={theme.colors.primary}
-        />
+      <View
+        style={[
+          styles.inputContainer,
+          { paddingBottom: Math.max(insets.bottom, 8) },
+        ]}
+      >
+        {/* --- IMAGE BUTTONS DISABLED/HIDDEN --- */}
+        {/* <IconButton icon="camera" onPress={handleCameraCapture} disabled={isLoading} />
+        <IconButton icon="image" onPress={handleImagePick} disabled={isLoading} /> 
+        */}
+
         <TextInput
           style={styles.textInput}
           value={inputText}
           onChangeText={setInputText}
-          placeholder="Describe your symptoms..."
+          placeholder="Describe your emergency..."
           mode="outlined"
           disabled={isLoading}
           multiline
-          maxLength={500}
           onSubmitEditing={handleSendMessage}
+        />
+        <IconButton
+          icon={isListening ? "microphone" : "microphone-outline"}
+          mode={isListening ? "contained" : undefined}
+          containerColor={isListening ? "#D32F2F" : undefined}
+          iconColor={isListening ? "white" : "#666"}
+          size={28}
+          // logic: Press and hold to talk, release to finish
+          onPressIn={startListening}
+          onPressOut={stopListening}
         />
         {isLoading ? (
           <ActivityIndicator
@@ -338,76 +391,42 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  messagesContainer: {
-    flex: 1,
-  },
-  messagesContent: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  messageContainer: {
-    marginBottom: 12,
-    maxWidth: "80%",
-  },
-  userMessageContainer: {
-    alignSelf: "flex-end",
-  },
-  botMessageContainer: {
-    alignSelf: "flex-start",
-  },
-  messageCard: {
-    elevation: 2,
-  },
-  userMessageCard: {
-    backgroundColor: "#007AFF",
-  },
-  botMessageCard: {
-    backgroundColor: "#ffffff",
-  },
-  userMessageText: {
-    color: "#ffffff",
-  },
-  botMessageText: {
-    color: "#000000",
-  },
+  container: { flex: 1, backgroundColor: "#f5f5f5" },
+  messagesContainer: { flex: 1 },
+  messagesContent: { padding: 16, paddingBottom: 8 },
+  messageContainer: { marginBottom: 12, maxWidth: "85%" },
+  userMessageContainer: { alignSelf: "flex-end" },
+  botMessageContainer: { alignSelf: "flex-start" },
+  messageCard: { elevation: 2, borderRadius: 12 },
+  userMessageCard: { backgroundColor: "#007AFF" },
+  botMessageCard: { backgroundColor: "#ffffff" },
+  userMessageText: { color: "#ffffff" },
+  botMessageText: { color: "#000000" },
   messageImage: {
     width: "100%",
     height: 200,
     borderRadius: 8,
     marginBottom: 8,
+    resizeMode: "cover",
   },
   protocolContainer: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: "#FFF3CD",
+    backgroundColor: "#F8F9FA",
     borderRadius: 8,
     borderLeftWidth: 4,
-    borderLeftColor: "#FFC107",
+    borderLeftColor: "#007AFF",
   },
   protocolTitle: {
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: 16,
     marginBottom: 8,
-    color: "#856404",
+    color: "#212529",
   },
-  protocolCondition: {
-    fontSize: 13,
-    marginBottom: 8,
-    color: "#856404",
-    fontWeight: "600",
-  },
-  protocolSteps: {
-    fontSize: 12,
-    color: "#856404",
-    lineHeight: 18,
-  },
+  protocolSteps: { fontSize: 14, color: "#495057", lineHeight: 22 },
   emergencyWarning: {
-    marginTop: 8,
-    fontSize: 13,
+    marginTop: 12,
+    fontSize: 12,
     fontWeight: "bold",
     color: "#D32F2F",
     textAlign: "center",
@@ -420,12 +439,61 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#e0e0e0",
   },
-  textInput: {
-    flex: 1,
-    marginHorizontal: 4,
-    maxHeight: 100,
+  textInput: { flex: 1, marginHorizontal: 8, maxHeight: 100 },
+  sendButton: { marginLeft: 4 },
+  criticalActionContainer: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: "#FFEBEE", // Light red background
+    borderRadius: 8,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D32F2F",
   },
-  sendButton: {
-    marginLeft: 4,
+  divider: {
+    height: 1,
+    backgroundColor: "#D32F2F",
+    width: "100%",
+    marginBottom: 10,
+    opacity: 0.2,
+  },
+  emergencyWarningText: {
+    color: "#D32F2F",
+    fontWeight: "900",
+    fontSize: 12,
+    textAlign: "center",
+    marginBottom: 5,
+  },
+  emergencyButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  tapToCall: {
+    color: "#D32F2F",
+    fontSize: 10,
+    fontWeight: "bold",
+    marginTop: 5,
+  },
+  badgeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  confidenceText: {
+    fontSize: 10,
+    color: "#666",
+    fontWeight: "bold",
   },
 });
