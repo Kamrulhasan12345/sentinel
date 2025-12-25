@@ -31,8 +31,8 @@ export const getEmergencyProtocol = (
 ): EmergencyProtocol => {
   const { condition, severity, confidence, symptoms } = analysisResult;
 
-  // Find matching protocol in emergency_data.json
-  const protocol = findProtocolByCondition(condition);
+  // Find matching protocol in emergency_data.json using condition and symptoms/keywords
+  const protocol = findBestProtocolMatch(condition, symptoms);
 
   if (!protocol) {
     return generateDefaultProtocol(analysisResult);
@@ -99,6 +99,29 @@ const findProtocolByCondition = (condition: string): ProtocolData | null => {
   }
 };
 
+const findBestProtocolMatch = (
+  condition: string,
+  symptoms?: string[],
+): ProtocolData | null => {
+  const primary = findProtocolByCondition(condition);
+  if (primary) return primary;
+
+  if (symptoms && symptoms.length) {
+    const lowerSymptoms = symptoms.map((s) => s.toLowerCase());
+    const data = emergencyData as EmergencyDataStructure;
+    if (!data?.protocols) return null;
+
+    const keywordHit = data.protocols.find((p) =>
+      p.keywords?.some((k) =>
+        lowerSymptoms.some((s) => s.includes(k.toLowerCase())),
+      ),
+    );
+    if (keywordHit) return keywordHit;
+  }
+
+  return null;
+};
+
 /**
  * Determine triage level (1-5 scale)
  * 1 = Non-urgent, 5 = Critical
@@ -130,7 +153,9 @@ const generateResponseMessage = (
     message += `⚠️ **CALL EMERGENCY SERVICES IMMEDIATELY** ⚠️\n\n`;
   }
 
-  message += `Recommended Actions:\n• `;
+  if (protocol.steps?.length) {
+    message += `Recommended Actions:\n• ${protocol.steps.join("\n• ")}`;
+  }
 
   return message;
 };
@@ -166,7 +191,7 @@ const generateDefaultProtocol = (
     );
   }
 
-  response += `Recommended Actions:\n• `;
+  response += `Recommended Actions:\n• ${defaultSteps.join("\n• ")}`;
 
   return {
     level: triageLevel,

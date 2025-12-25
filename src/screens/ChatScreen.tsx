@@ -8,6 +8,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { useTensorflowModel } from "react-native-fast-tflite";
 import {
   ActivityIndicator,
   Card,
@@ -15,7 +16,7 @@ import {
   Paragraph,
   Text,
   TextInput,
-  useTheme
+  useTheme,
 } from "react-native-paper";
 import { analyzeUserInput } from "../services/aiService";
 import {
@@ -34,6 +35,12 @@ interface Message {
 
 export default function ChatScreen() {
   const theme = useTheme();
+  const textModelHook = useTensorflowModel(
+    require("../assets/models/mobilebert.tflite"),
+  );
+  const imageModelHook = useTensorflowModel(
+    require("../assets/models/mobilenet_v2.tflite"),
+  );
   const scrollViewRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -58,7 +65,7 @@ export default function ChatScreen() {
     protocol?: EmergencyProtocol,
   ) => {
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       text,
       sender,
       timestamp: new Date(),
@@ -80,7 +87,10 @@ export default function ChatScreen() {
 
     try {
       // Run AI inference
-      const analysisResult = await analyzeUserInput({ text: userMessage });
+      const analysisResult = await analyzeUserInput(
+        { text: userMessage },
+        { textModel: textModelHook.model },
+      );
 
       // Map to emergency protocol
       const protocol = getEmergencyProtocol(analysisResult);
@@ -131,7 +141,10 @@ export default function ChatScreen() {
 
       try {
         // Run AI inference on image
-        const analysisResult = await analyzeUserInput({ imageUri });
+        const analysisResult = await analyzeUserInput(
+          { imageUri },
+          { imageModel: imageModelHook.model },
+        );
 
         // Map to emergency protocol
         const protocol = getEmergencyProtocol(analysisResult);
@@ -178,7 +191,10 @@ export default function ChatScreen() {
 
       try {
         // Run AI inference on image
-        const analysisResult = await analyzeUserInput({ imageUri });
+        const analysisResult = await analyzeUserInput(
+          { imageUri },
+          { imageModel: imageModelHook.model },
+        );
 
         // Map to emergency protocol
         const protocol = getEmergencyProtocol(analysisResult);
