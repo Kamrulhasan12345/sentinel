@@ -1,0 +1,198 @@
+{
+	"protocols": [
+		{
+			"condition": "chest_pain",
+			"name": "Chest Pain / Cardiac Event",
+			"steps": [
+				"Call emergency services immediately (999 or 1199)",
+				"Have the person sit down and rest in a comfortable position",
+				"Loosen any tight clothing around the neck and chest",
+				"If aspirin is available and the person is not allergic, give 300mg to chew",
+				"Monitor breathing and consciousness",
+				"Be prepared to perform CPR if person becomes unresponsive"
+			],
+			"keywords": ["chest", "heart", "cardiac", "chest pain"],
+			"triageLevel": "CRITICAL"
+		},
+		{
+			"condition": "severe_bleeding",
+			"name": "Severe Bleeding / Hemorrhage",
+			"steps": [
+				"Call emergency services immediately",
+				"Apply direct pressure to the wound with a clean cloth or bandage",
+				"Maintain pressure continuously for at least 10 minutes",
+				"Elevate the injured area above heart level if possible",
+				"Do not remove the cloth even if it becomes soaked - add more layers",
+				"Keep the person warm and calm",
+				"Monitor for signs of shock"
+			],
+			"keywords": ["bleeding", "blood", "hemorrhage", "cut", "wound"],
+			"triageLevel": "CRITICAL"
+		},
+		{
+			"condition": "unconscious",
+			"name": "Unconsciousness / Unresponsive",
+			"steps": [
+				"Call emergency services immediately",
+				"Check for breathing - look, listen, and feel for 10 seconds",
+				"If breathing normally, place in recovery position (on their side)",
+				"If not breathing, begin CPR immediately",
+				"Clear the airway of any obstructions",
+				"Monitor breathing and pulse continuously",
+				"Do not give anything by mouth"
+			],
+			"keywords": ["unconscious", "unresponsive", "passed out", "fainted"],
+			"triageLevel": "CRITICAL"
+		},
+		{
+			"condition": "difficulty_breathing",
+			"name": "Difficulty Breathing / Respiratory Distress",
+			"steps": [
+				"Call emergency services immediately",
+				"Help the person sit upright or in a comfortable position",
+				"Loosen tight clothing around neck and chest",
+				"If person has an inhaler, help them use it",
+				"Reassure the person and encourage slow, deep breaths",
+				"Open windows for fresh air",
+				"Monitor breathing rate and consciousness"
+			],
+			"keywords": ["breathing", "breathe", "respiratory", "asthma", "choking"],
+			"triageLevel": "EMERGENCY"
+		},
+		{
+			"condition": "burn",
+			"name": "Burns",
+			"steps": [
+				"Remove person from heat source safely",
+				"Cool the burn with cool (not cold) running water for 20 minutes",
+				"Remove jewelry and tight clothing before swelling occurs",
+				"Cover burn with clean, non-stick bandage or cloth",
+				"Do not apply ice, butter, or ointments",
+				"If burn is severe or covers large area, call emergency services",
+				"Monitor for signs of shock"
+			],
+			"keywords": ["burn", "burned", "scalded", "fire"],
+			"triageLevel": "URGENT"
+		},
+		{
+			"condition": "fracture",
+			"name": "Fracture / Broken Bone",
+			"steps": [
+				"Do not move the injured area",
+				"Immobilize the fracture with a splint if available",
+				"Apply ice packs wrapped in cloth to reduce swelling",
+				"Elevate the injured limb if possible",
+				"Monitor circulation beyond the injury (check pulse, color, warmth)",
+				"Call emergency services for severe fractures or if unable to move safely",
+				"Do not try to realign the bone"
+			],
+			"keywords": ["fracture", "broken", "bone", "break"],
+			"triageLevel": "URGENT"
+		},
+		{
+			"condition": "head_injury",
+			"name": "Head Injury / Trauma",
+			"steps": [
+				"Call emergency services for severe head injuries",
+				"Keep the person still and lying down",
+				"Apply firm pressure to bleeding areas with clean cloth",
+				"Monitor level of consciousness - keep person awake and talking",
+				"Watch for signs of concussion: confusion, vomiting, unequal pupils",
+				"Do not move person if spinal injury is suspected",
+				"Do not give any medications without medical advice"
+			],
+			"keywords": ["head", "skull", "concussion", "head injury"],
+			"triageLevel": "EMERGENCY"
+		},
+		{
+			"condition": "seizure",
+			"name": "Seizure / Convulsion",
+			"steps": [
+				"Stay calm and time the seizure",
+				"Clear the area of hard or sharp objects",
+				"Place something soft under the person's head",
+				"Turn person on their side to help with breathing",
+				"Do not restrain movements or put anything in the mouth",
+				"Call emergency services if seizure lasts more than 5 minutes",
+				"Stay with person until fully conscious"
+			],
+			"keywords": ["seizure", "convulsion", "fitting", "epilepsy"],
+			"triageLevel": "EMERGENCY"
+		},
+		{
+			"condition": "allergic_reaction",
+			"name": "Severe Allergic Reaction / Anaphylaxis",
+			"steps": [
+				"Call emergency services immediately",
+				"If person has an EpiPen, help them use it immediately",
+				"Have person lie down and elevate legs",
+				"Loosen tight clothing",
+				"Monitor breathing and pulse",
+				"Be prepared to perform CPR",
+				"Do not give anything by mouth if person is having trouble breathing"
+			],
+			"keywords": ["allergic", "allergy", "anaphylaxis", "swelling", "hives"],
+			"triageLevel": "CRITICAL"
+		},
+		{
+			"condition": "stroke",
+			"name": "Stroke",
+			"steps": [
+				"Call emergency services immediately - use FAST test:",
+				"F - Face: Ask person to smile, check for drooping",
+				"A - Arms: Ask person to raise both arms, check for weakness",
+				"S - Speech: Ask person to repeat a simple phrase, check for slurred speech",
+				"T - Time: Note the time symptoms started",
+				"Keep person calm and comfortable",
+				"Do not give anything to eat or drink"
+			],
+			"keywords": ["stroke", "paralysis", "weakness", "facial drooping"],
+			"triageLevel": "CRITICAL"
+		},
+		{
+			"condition": "poisoning",
+			"name": "Poisoning / Toxic Ingestion",
+			"steps": [
+				"Call poison control center or emergency services immediately",
+				"Identify the substance if possible",
+				"Do not induce vomiting unless instructed by medical professionals",
+				"If unconscious, place in recovery position",
+				"Keep sample of substance or container",
+				"Monitor breathing and consciousness",
+				"Follow specific instructions from poison control"
+			],
+			"keywords": ["poison", "poisoning", "ingested", "swallowed", "toxic"],
+			"triageLevel": "EMERGENCY"
+		},
+		{
+			"condition": "fever",
+			"name": "High Fever",
+			"steps": [
+				"Take temperature regularly",
+				"Give appropriate fever-reducing medication (paracetamol or ibuprofen)",
+				"Remove excess clothing and blankets",
+				"Keep room temperature comfortable",
+				"Encourage drinking plenty of fluids",
+				"Use cool compresses on forehead if needed",
+				"Seek medical attention if fever exceeds 39°C (102°F) or persists"
+			],
+			"keywords": ["fever", "temperature", "hot"],
+			"triageLevel": "LESS URGENT"
+		},
+		{
+			"condition": "sprain",
+			"name": "Sprain / Strain",
+			"steps": [
+				"Rest the injured area",
+				"Ice: Apply ice pack for 20 minutes every 2-3 hours",
+				"Compression: Wrap with elastic bandage (not too tight)",
+				"Elevation: Keep injured area raised above heart level",
+				"Take over-the-counter pain medication if needed",
+				"Avoid using the injured area for 24-48 hours",
+				"Seek medical attention if severe pain or unable to bear weight"
+			],
+			"keywords": ["sprain", "strain", "twisted", "pulled muscle"],
+			"triageLevel": "LESS URGENT"
+		}
+	]
+}
