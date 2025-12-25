@@ -80,7 +80,7 @@ const preprocessText = (
 
   // Simple word to ID mapping (placeholder - use actual BERT vocab)
   const tokenIds = tokens.slice(0, targetLength).map((token) => {
-    // This is a placeholder - use real BERT tokenizer
+    // TODO: This is a placeholder - use real BERT tokenizer
     return token.charCodeAt(0) % 30000; // Mock token ID
   });
 
