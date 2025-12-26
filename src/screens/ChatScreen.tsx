@@ -5,6 +5,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -12,7 +13,7 @@ import {
   TextInput as RNTextInput,
   StyleSheet,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import Animated, {
   interpolate,
@@ -382,6 +383,25 @@ export default function ChatScreen() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [inputHeight, setInputHeight] = useState(0);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, () =>
+      setIsKeyboardVisible(true),
+    );
+    const hideSub = Keyboard.addListener(hideEvent, () =>
+      setIsKeyboardVisible(false),
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     setTimeout(() => {
@@ -583,8 +603,12 @@ export default function ChatScreen() {
     <View style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? headerHeight : 0}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={100}
+      // keyboardVerticalOffset={
+      //   headerHeight +
+      //   (Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0)
+      // }
       >
         <FlatList
           ref={flatListRef}
@@ -620,7 +644,9 @@ export default function ChatScreen() {
           style={[
             styles.inputWrapper,
             {
-              paddingBottom: insets.bottom + 10, // Move up slightly and respect safe area
+              paddingBottom: isKeyboardVisible
+                ? 16
+                : Math.max(insets.bottom, 12) + 12,
             },
           ]}
         >
