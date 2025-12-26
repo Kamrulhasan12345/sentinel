@@ -29,14 +29,14 @@ class ClassifierEngine {
     try {
       // 1. Load TFLite Model
       const modelAsset = Asset.fromModule(
-        require("../assets/models/med_intent.tflite"),
+        require("../assets/models/sentinel-cnn-v1/med_intent.tflite"),
       );
       await modelAsset.downloadAsync();
       this.model = await loadTensorflowModel({ url: modelAsset.localUri! });
 
       // 2. Load Labels
       const labelAsset = Asset.fromModule(
-        require("../assets/models/labels.txt"),
+        require("../assets/models/sentinel-cnn-v1/labels.txt"),
       );
       await labelAsset.downloadAsync();
       const labelContent = await FileSystem.readAsStringAsync(

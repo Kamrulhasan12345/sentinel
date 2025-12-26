@@ -1,4 +1,4 @@
-import vocabData from "../assets/models/vocab.json";
+import vocabData from "../assets/models/sentinel-cnn-v1/vocab.json";
 
 const VOCAB: Record<string, number> = vocabData;
 const OOV_TOKEN = VOCAB["<OOV>"] || 1;

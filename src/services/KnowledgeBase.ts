@@ -1,4 +1,4 @@
-import intentsData from "../assets/models/intents.json";
+import intentsData from "../assets/models/sentinel-cnn-v1/intents.json";
 import { AI_CONFIG } from "../constants/Config";
 
 export interface FirstAidContent {
