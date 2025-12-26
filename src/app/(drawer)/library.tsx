@@ -78,18 +78,21 @@ export default function LibraryScreen() {
         onPress={() => handleOpenDetail(item)}
         activeOpacity={0.7}
       >
+        <View style={[styles.accentBar, { backgroundColor: severityColor }]} />
         <View style={styles.itemContent}>
           <View style={styles.itemHeader}>
             <Text style={styles.itemTitle}>{formatTag(item.tag)}</Text>
-            <View
-              style={[styles.severityDot, { backgroundColor: severityColor }]}
-            />
           </View>
           <Text numberOfLines={1} style={styles.itemPreview}>
             {item.responses[0]}
           </Text>
         </View>
-        <MaterialCommunityIcons name="chevron-right" size={20} color="#ccc" />
+        <MaterialCommunityIcons
+          name="chevron-right"
+          size={24}
+          color="#adb5bd"
+          style={{ marginRight: 12 }}
+        />
       </TouchableOpacity>
     );
   };
@@ -203,8 +206,8 @@ export default function LibraryScreen() {
               <View style={styles.disclaimer}>
                 <MaterialCommunityIcons
                   name="alert-circle-outline"
-                  size={20}
-                  color="#666"
+                  size={24}
+                  color="#e03131"
                 />
                 <Text variant="bodySmall" style={styles.disclaimerText}>
                   This information is for educational purposes only. In case of
@@ -222,155 +225,187 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f9fa",
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    backgroundColor: "#ffffff",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f3f5",
   },
   searchBar: {
     backgroundColor: "#f1f3f5",
-    borderRadius: 24,
-    height: 44,
+    borderRadius: 8,
+    height: 48,
+    elevation: 0,
   },
   searchBarInput: {
-    minHeight: 44,
-    fontSize: 15,
+    minHeight: 48,
+    fontSize: 16,
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
+    padding: 20,
+    paddingBottom: 40,
   },
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f1f3f5",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#f1f3f5",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  accentBar: {
+    width: 4,
+    height: "100%",
   },
   itemContent: {
     flex: 1,
-    marginRight: 12,
+    padding: 16,
+    paddingLeft: 12,
   },
   itemHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   itemTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1a1a1a",
-    letterSpacing: -0.3,
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#212529",
+    letterSpacing: -0.4,
   },
   severityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginLeft: 8,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginLeft: 10,
   },
   itemPreview: {
-    fontSize: 13,
-    color: "#8e8e93",
-    lineHeight: 18,
+    fontSize: 14,
+    color: "#6c757d",
+    lineHeight: 20,
   },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 100,
+    marginTop: 120,
+    opacity: 0.5,
   },
   emptyText: {
     marginTop: 16,
-    color: "#8e8e93",
+    color: "#495057",
+    fontSize: 16,
+    fontWeight: "600",
     textAlign: "center",
     paddingHorizontal: 32,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f9fa",
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f3f5",
   },
   modalTitle: {
-    fontWeight: "700",
-    fontSize: 17,
-    letterSpacing: -0.4,
+    fontWeight: "800",
+    fontSize: 18,
+    color: "#212529",
   },
   modalScroll: {
     padding: 24,
   },
   detailHeader: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
   detailTitle: {
     fontWeight: "800",
-    fontSize: 32,
-    color: "#1a1a1a",
-    letterSpacing: -1,
+    fontSize: 34,
+    color: "#212529",
+    letterSpacing: -1.2,
+    lineHeight: 40,
   },
   divider: {
     height: 1,
-    backgroundColor: "#f1f3f5",
+    backgroundColor: "#e9ecef",
     marginBottom: 32,
   },
   section: {
     marginBottom: 40,
   },
   sectionTitle: {
-    fontWeight: "700",
+    fontWeight: "800",
     marginBottom: 16,
-    color: "#8e8e93",
+    color: "#adb5bd",
     textTransform: "uppercase",
-    letterSpacing: 1,
-    fontSize: 11,
+    letterSpacing: 1.5,
+    fontSize: 12,
   },
   instructionStep: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#fff",
     padding: 20,
-    borderRadius: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#f1f3f5",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
   },
   instructionText: {
     fontSize: 16,
-    lineHeight: 24,
-    color: "#1a1a1a",
+    lineHeight: 26,
+    color: "#495057",
   },
   patternContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
   patternChip: {
-    backgroundColor: "#f1f3f5",
-    borderRadius: 8,
+    backgroundColor: "#e9ecef",
+    borderRadius: 12,
   },
   moreText: {
     alignSelf: "center",
-    color: "#8e8e93",
+    color: "#adb5bd",
     fontSize: 12,
     marginLeft: 4,
+    fontWeight: "600",
   },
   disclaimer: {
     flexDirection: "row",
     backgroundColor: "#fff5f5",
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     marginTop: 20,
     alignItems: "center",
     gap: 16,
+    borderWidth: 1,
+    borderColor: "#ffe3e3",
   },
   disclaimerText: {
     flex: 1,
-    color: "#ff3b30",
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "500",
+    color: "#e03131",
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
   },
 });

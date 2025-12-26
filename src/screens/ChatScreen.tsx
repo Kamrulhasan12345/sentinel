@@ -12,7 +12,8 @@ import {
   Platform,
   TextInput as RNTextInput,
   StyleSheet,
-  View
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
   interpolate,
@@ -21,12 +22,18 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 // 1. Import your new high-performance services
+import { ChatSessionMetadata, History } from "../services/HistoryService";
 import { Classifier } from "../services/HybridEngine";
 import { FirstAidContent, KnowledgeBase } from "../services/KnowledgeBase";
 
+import { useColorScheme } from "@/components/useColorScheme";
+import Colors from "@/constants/Colors";
 import { SEVERITY_MAP, TriageLevel } from "@/constants/SeverityMap";
 import { useVoiceToText } from "@/hooks/useVoiceToText";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -149,6 +156,8 @@ const MessageItem = React.memo(({ message }: { message: Message }) => {
 
 export default function ChatScreen() {
   const theme = useTheme();
+  const colorScheme = useColorScheme() as "light" | "dark" | null;
+  const appTheme = Colors[colorScheme ?? "light"];
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const flatListRef = useRef<any>(null);
@@ -159,6 +168,23 @@ export default function ChatScreen() {
   const recordingStartTime = useRef<number>(0);
   const [showHoldMessage, setShowHoldMessage] = useState(false);
   const [isLegendVisible, setIsLegendVisible] = useState(false);
+  const [isHistoryVisible, setIsHistoryVisible] = useState(false);
+  const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
+  const [renameId, setRenameId] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState("");
+  const [sessions, setSessions] = useState<ChatSessionMetadata[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [sessionTitle, setSessionTitle] = useState<string>("New Assessment");
+  const skipNextSave = useRef(false);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "1",
+      text: "Hello! I'm your medical assistant. Describe your symptoms for an immediate first-aid assessment.",
+      sender: "bot",
+      timestamp: new Date(),
+    },
+  ]);
+  const [inputText, setInputText] = useState("");
 
   const { isListening, startListening, stopListening } = useVoiceToText(
     (transcript) => {
@@ -184,6 +210,8 @@ export default function ChatScreen() {
                 timestamp: new Date(),
               },
             ]);
+            setCurrentSessionId(null);
+            setSessionTitle("New Assessment");
           },
         },
       ],
@@ -191,17 +219,111 @@ export default function ChatScreen() {
     );
   };
 
+  const loadHistory = async () => {
+    const allSessions = await History.getAllSessions();
+    setSessions(allSessions);
+    setIsHistoryVisible(true);
+  };
+
+  const selectSession = async (id: string) => {
+    const session = await History.loadSession(id);
+    if (session) {
+      // Convert ISO strings back to Date objects
+      const formattedMessages = session.messages.map((m: any) => ({
+        ...m,
+        timestamp: new Date(m.timestamp),
+      }));
+      skipNextSave.current = true;
+      setMessages(formattedMessages);
+      setCurrentSessionId(session.id);
+      setSessionTitle(session.title);
+      setIsHistoryVisible(false);
+    }
+  };
+
+  const deleteSession = async (id: string) => {
+    await History.deleteSession(id);
+    const allSessions = await History.getAllSessions();
+    setSessions(allSessions);
+    if (currentSessionId === id) {
+      clearChat();
+    }
+  };
+
+  const renameSession = (id: string, currentTitle: string) => {
+    setRenameId(id);
+    setNewTitle(currentTitle);
+    setIsRenameModalVisible(true);
+  };
+
+  const handleRenameSave = async () => {
+    if (renameId && newTitle.trim()) {
+      await History.renameSession(renameId, newTitle.trim());
+      const allSessions = await History.getAllSessions();
+      setSessions(allSessions);
+      if (currentSessionId === renameId) setSessionTitle(newTitle.trim());
+      setIsRenameModalVisible(false);
+      setRenameId(null);
+      setNewTitle("");
+    }
+  };
+
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <IconButton
-          icon="trash-can-outline"
-          iconColor="#666"
-          onPress={clearChat}
-        />
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <IconButton
+            icon="plus"
+            iconColor={theme.colors.primary}
+            onPress={() => {
+              clearChat();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+          />
+          <IconButton icon="history" iconColor="#666" onPress={loadHistory} />
+        </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation, currentSessionId, theme]);
+
+  // Auto-save effect
+  useEffect(() => {
+    if (messages.length > 1) {
+      if (skipNextSave.current) {
+        skipNextSave.current = false;
+        return;
+      }
+
+      const save = async () => {
+        if (!currentSessionId) {
+          const sessionId = Date.now().toString();
+          // Use first user message as title
+          const firstUserMsg = messages.find((m) => m.sender === "user");
+          const title = firstUserMsg
+            ? firstUserMsg.text.slice(0, 30) +
+            (firstUserMsg.text.length > 30 ? "..." : "")
+            : "Emergency Assessment";
+          setCurrentSessionId(sessionId);
+          setSessionTitle(title);
+          return;
+        }
+
+        await History.saveSession({
+          id: currentSessionId,
+          title: sessionTitle,
+          createdAt: messages[0].timestamp.toISOString(),
+          updatedAt: new Date().toISOString(),
+          lastMessage: messages[messages.length - 1].text,
+          messages: messages,
+        });
+      };
+      save();
+    }
+  }, [messages, currentSessionId, sessionTitle]);
+
+  useEffect(() => {
+    History.initialize();
+  }, []);
 
   useEffect(() => {
     if (isListening) {
@@ -237,15 +359,6 @@ export default function ChatScreen() {
     };
   });
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      text: "Hello! I'm your medical assistant. Describe your symptoms for an immediate first-aid assessment.",
-      sender: "bot",
-      timestamp: new Date(),
-    },
-  ]);
-  const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -613,6 +726,139 @@ export default function ChatScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={isHistoryVisible}
+        animationType="slide"
+        onRequestClose={() => setIsHistoryVisible(false)}
+      >
+        <SafeAreaView style={styles.historyContainer}>
+          <View style={styles.historyHeader}>
+            <IconButton
+              icon="chevron-down"
+              size={28}
+              onPress={() => setIsHistoryVisible(false)}
+            />
+            <Text variant="headlineSmall" style={styles.historyTitle}>
+              History
+            </Text>
+            <IconButton
+              icon="delete-sweep-outline"
+              iconColor="#D32F2F"
+              onPress={() => {
+                Alert.alert(
+                  "Clear All History",
+                  "This action cannot be undone.",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Clear All",
+                      style: "destructive",
+                      onPress: async () => {
+                        await History.deleteAllSessions();
+                        setSessions([]);
+                        clearChat();
+                      },
+                    },
+                  ],
+                );
+              }}
+            />
+          </View>
+
+          <FlatList
+            data={sessions}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.historyList}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.historyItem}
+                onPress={() => selectSession(item.id)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.accentBar} />
+                <View style={styles.historyItemContent}>
+                  <View style={styles.historyItemHeader}>
+                    <Text style={styles.historyItemTitle} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.historyItemDate}>
+                      {new Date(item.updatedAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={styles.historyItemPreview} numberOfLines={1}>
+                    {item.lastMessage || "No messages yet"}
+                  </Text>
+                </View>
+                <View style={styles.historyItemActions}>
+                  <IconButton
+                    icon="pencil-outline"
+                    size={20}
+                    onPress={() => renameSession(item.id, item.title)}
+                  />
+                  <IconButton
+                    icon="delete-outline"
+                    size={20}
+                    iconColor="#D32F2F"
+                    onPress={() => deleteSession(item.id)}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyHistory}>
+                <IconButton
+                  icon="message-off-outline"
+                  size={64}
+                  iconColor="#ccc"
+                />
+                <Text style={styles.emptyHistoryText}>No history found</Text>
+              </View>
+            }
+          />
+        </SafeAreaView>
+      </Modal>
+
+      {/* Rename Modal */}
+      <Modal
+        visible={isRenameModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsRenameModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.renameModalContent}>
+            <Text variant="titleLarge" style={styles.modalTitle}>
+              Rename Assessment
+            </Text>
+            <RNTextInput
+              style={styles.renameInput}
+              value={newTitle}
+              onChangeText={setNewTitle}
+              placeholder="Enter new title"
+              autoFocus
+              selectTextOnFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={() => setIsRenameModalVisible(false)}
+                style={styles.modalButton}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleRenameSave}
+                style={[styles.modalButton, styles.saveButton]}
+              >
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -625,73 +871,84 @@ const styles = StyleSheet.create({
   userMessageContainer: { alignSelf: "flex-end" },
   botMessageContainer: { alignSelf: "flex-start" },
   messageBubble: {
-    padding: 12,
-    borderRadius: 20,
-    elevation: 1,
+    padding: 14,
+    borderRadius: 12,
+    elevation: 0,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
   },
   userBubble: {
     backgroundColor: "#007AFF",
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 2,
   },
   botBubble: {
     backgroundColor: "#ffffff",
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: 2,
+    borderWidth: 1,
+    borderColor: "#f1f3f5",
   },
-  userText: { color: "#ffffff", fontSize: 16 },
-  botText: { color: "#212529", fontSize: 16 },
+  userText: { color: "#ffffff", fontSize: 16, lineHeight: 22 },
+  botText: { color: "#212529", fontSize: 16, lineHeight: 22 },
   timestamp: {
     fontSize: 10,
-    marginTop: 4,
-    opacity: 0.6,
+    marginTop: 6,
+    opacity: 0.5,
+    fontWeight: "600",
   },
   userTimestamp: { color: "#ffffff", textAlign: "right" },
-  botTimestamp: { color: "#6c757d", textAlign: "left" },
+  botTimestamp: { color: "#adb5bd", textAlign: "left" },
   messageImage: {
     width: "100%",
     height: 200,
-    borderRadius: 12,
-    marginBottom: 8,
+    borderRadius: 16,
+    marginBottom: 10,
     resizeMode: "cover",
   },
   protocolContainer: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: "#f1f3f5",
-    borderRadius: 12,
+    marginTop: 14,
+    padding: 16,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
   },
   protocolTitle: {
-    fontWeight: "700",
-    fontSize: 15,
-    marginBottom: 6,
+    fontWeight: "800",
+    fontSize: 16,
+    marginBottom: 8,
     color: "#212529",
+    letterSpacing: -0.3,
   },
-  protocolSteps: { fontSize: 14, color: "#495057", lineHeight: 20 },
+  protocolSteps: {
+    fontSize: 15,
+    color: "#495057",
+    lineHeight: 22,
+    marginBottom: 4,
+  },
   inputWrapper: {
     backgroundColor: "#ffffff",
     borderTopWidth: 1,
     borderTopColor: "#f1f3f5",
-    paddingHorizontal: 10,
-    paddingTop: 8,
+    paddingHorizontal: 12,
+    paddingTop: 10,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
     backgroundColor: "#f1f3f5",
-    borderRadius: 22,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    minHeight: 44,
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    minHeight: 48,
   },
   textInput: {
     flex: 1,
     fontSize: 16,
     color: "#212529",
-    maxHeight: 100,
-    paddingHorizontal: 12,
+    maxHeight: 120,
+    paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 10,
     textAlignVertical: "top",
@@ -732,26 +989,28 @@ const styles = StyleSheet.create({
   },
   sendButton: { marginLeft: 4 },
   criticalActionContainer: {
-    marginTop: 12,
-    padding: 12,
+    marginTop: 16,
+    padding: 20,
     backgroundColor: "#fff5f5",
-    borderRadius: 12,
+    borderRadius: 20,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#ffa8a8",
+    borderColor: "#ffe3e3",
   },
   divider: {
     height: 1,
-    backgroundColor: "#ffa8a8",
+    backgroundColor: "#ffe3e3",
     width: "100%",
-    marginVertical: 10,
+    marginVertical: 12,
   },
   emergencyWarningText: {
     color: "#e03131",
     fontWeight: "800",
-    fontSize: 12,
+    fontSize: 13,
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 10,
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
   emergencyButton: {
     width: 56,
@@ -806,46 +1065,58 @@ const styles = StyleSheet.create({
   },
   legendModalContent: {
     backgroundColor: "white",
-    borderRadius: 20,
-    padding: 20,
-    width: "100%",
+    borderRadius: 12,
+    padding: 24,
+    width: "90%",
     maxWidth: 400,
-    elevation: 5,
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.1,
+    shadowRadius: 30,
   },
   legendModalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 16,
   },
   legendModalTitle: {
-    fontWeight: "700",
+    fontWeight: "800",
+    fontSize: 22,
+    color: "#212529",
   },
   legendItem: {
     flexDirection: "row",
-    marginTop: 20,
-    alignItems: "flex-start",
+    marginTop: 16,
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
   },
   legendDot: {
     width: 12,
     height: 12,
-    borderRadius: 6,
-    marginTop: 6,
-    marginRight: 12,
+    borderRadius: 2,
+    marginRight: 16,
   },
   legendTextContainer: {
     flex: 1,
   },
   legendLabel: {
-    fontWeight: "700",
+    fontWeight: "800",
     fontSize: 14,
     color: "#212529",
     marginBottom: 2,
+    letterSpacing: 0.5,
   },
   legendDescription: {
     fontSize: 13,
     color: "#6c757d",
     lineHeight: 18,
+    fontWeight: "500",
   },
   legendDisclaimer: {
     marginTop: 24,
@@ -853,5 +1124,143 @@ const styles = StyleSheet.create({
     color: "#adb5bd",
     fontStyle: "italic",
     textAlign: "center",
+  },
+  historyContainer: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
+  historyHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f3f5",
+  },
+  historyTitle: {
+    fontWeight: "800",
+    color: "#212529",
+  },
+  historyList: {
+    padding: 20,
+  },
+  historyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#f1f3f5",
+    overflow: "hidden",
+    // Premium shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  accentBar: {
+    width: 4,
+    height: "100%",
+    backgroundColor: "#007AFF",
+  },
+  historyItemContent: {
+    flex: 1,
+    padding: 16,
+    paddingLeft: 12,
+  },
+  historyItemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  historyItemTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#212529",
+    flex: 1,
+    marginRight: 12,
+  },
+  historyItemDate: {
+    fontSize: 12,
+    color: "#adb5bd",
+    fontWeight: "600",
+  },
+  historyItemPreview: {
+    fontSize: 14,
+    color: "#6c757d",
+    lineHeight: 20,
+  },
+  historyItemActions: {
+    flexDirection: "row",
+    marginLeft: 8,
+  },
+  emptyHistory: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 120,
+    opacity: 0.5,
+  },
+  emptyHistoryText: {
+    color: "#495057",
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 12,
+  },
+  renameModalContent: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 24,
+    width: "90%",
+    maxWidth: 340,
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+  },
+  modalTitle: {
+    fontWeight: "800",
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#212529",
+  },
+  renameInput: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    padding: 16,
+    fontSize: 16,
+    color: "#212529",
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderRadius: 8,
+  },
+  saveButton: {
+    backgroundColor: "#007AFF",
+    marginLeft: 12,
+  },
+  cancelButtonText: {
+    color: "#6c757d",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
   },
 });
