@@ -1,15 +1,18 @@
 import * as Haptics from "expo-haptics";
+import { useNavigation } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
+  FlatList,
   Image,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
+  Modal,
   Platform,
   TextInput as RNTextInput,
-  ScrollView,
   StyleSheet,
-  View,
+  View
 } from "react-native";
 import Animated, {
   interpolate,
@@ -30,6 +33,8 @@ import { useHeaderHeight } from "@react-navigation/elements";
 
 import {
   ActivityIndicator,
+  Chip,
+  Divider,
   IconButton,
   Text,
   useTheme,
@@ -46,22 +51,157 @@ interface Message {
   confidence?: number;
 }
 
+const MessageItem = React.memo(({ message }: { message: Message }) => {
+  const isUser = message.sender === "user";
+  const triageLevel = message.triageLevel || TriageLevel.ROUTINE;
+
+  const getConfidenceColor = (score: number) => {
+    if (score > 0.9) return "#4CAF50";
+    if (score > 0.7) return "#FF9800";
+    return "#F44336";
+  };
+
+  return (
+    <View
+      style={[
+        styles.messageContainer,
+        isUser ? styles.userMessageContainer : styles.botMessageContainer,
+      ]}
+    >
+      <View
+        style={[
+          styles.messageBubble,
+          isUser ? styles.userBubble : styles.botBubble,
+        ]}
+      >
+        {message.imageUri && (
+          <Image
+            source={{ uri: message.imageUri }}
+            style={styles.messageImage}
+          />
+        )}
+        <Text style={isUser ? styles.userText : styles.botText}>
+          {message.text}
+        </Text>
+
+        {message.firstAid && (
+          <View style={styles.protocolContainer}>
+            <Text style={styles.protocolTitle}>{message.firstAid.title}</Text>
+            {message.firstAid.instructions.map((step, index) => (
+              <Text key={index} style={styles.protocolSteps}>
+                • {step}
+              </Text>
+            ))}
+
+            {message.triageLevel &&
+              message.triageLevel !== TriageLevel.ROUTINE && (
+                <View style={styles.criticalActionContainer}>
+                  <Text style={styles.emergencyWarningText}>
+                    CRITICAL: {triageLevel.toUpperCase()}
+                  </Text>
+                  <View style={styles.divider} />
+                  <IconButton
+                    icon="phone"
+                    mode="contained"
+                    containerColor="#D32F2F"
+                    iconColor="white"
+                    size={30}
+                    style={styles.emergencyButton}
+                    onPress={() => Linking.openURL("tel:999")}
+                  />
+                  <Text style={styles.tapToCall}>
+                    Tap to call Emergency Services
+                  </Text>
+                </View>
+              )}
+          </View>
+        )}
+
+        <Text
+          style={[
+            styles.timestamp,
+            isUser ? styles.userTimestamp : styles.botTimestamp,
+          ]}
+        >
+          {message.timestamp.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </Text>
+      </View>
+
+      {message.confidence && !isUser && (
+        <View style={styles.badgeContainer}>
+          <View
+            style={[
+              styles.dot,
+              { backgroundColor: getConfidenceColor(message.confidence) },
+            ]}
+          />
+          <Text style={styles.confidenceText}>
+            AI Confidence: {(message.confidence * 100).toFixed(1)}%
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+});
+
 export default function ChatScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<any>(null);
+  const navigation = useNavigation();
 
   // Pulse animation for recording
   const pulse = useSharedValue(0);
   const recordingStartTime = useRef<number>(0);
   const [showHoldMessage, setShowHoldMessage] = useState(false);
+  const [isLegendVisible, setIsLegendVisible] = useState(false);
 
   const { isListening, startListening, stopListening } = useVoiceToText(
     (transcript) => {
       setInputText(transcript);
     },
   );
+
+  const clearChat = () => {
+    Alert.alert(
+      "Clear Chat",
+      "Are you sure you want to clear all messages?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: () => {
+            setMessages([
+              {
+                id: "1",
+                text: "Hello! I'm your medical assistant. Describe your symptoms for an immediate first-aid assessment.",
+                sender: "bot",
+                timestamp: new Date(),
+              },
+            ]);
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+  };
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <IconButton
+          icon="trash-can-outline"
+          iconColor="#666"
+          onPress={clearChat}
+        />
+      ),
+    });
+  }, [navigation]);
 
   useEffect(() => {
     if (isListening) {
@@ -128,7 +268,9 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   }, [messages]);
 
   // Update the function signature
@@ -301,103 +443,6 @@ export default function ChatScreen() {
   //   }
   // };
 
-  const renderMessage = (message: Message) => {
-    const isUser = message.sender === "user";
-    const triageLevel = message.triageLevel || TriageLevel.ROUTINE;
-
-    const getConfidenceColor = (score: number) => {
-      if (score > 0.9) return "#4CAF50";
-      if (score > 0.7) return "#FF9800";
-      return "#F44336";
-    };
-
-    return (
-      <View
-        key={message.id}
-        style={[
-          styles.messageContainer,
-          isUser ? styles.userMessageContainer : styles.botMessageContainer,
-        ]}
-      >
-        <View
-          style={[
-            styles.messageBubble,
-            isUser ? styles.userBubble : styles.botBubble,
-          ]}
-        >
-          {message.imageUri && (
-            <Image
-              source={{ uri: message.imageUri }}
-              style={styles.messageImage}
-            />
-          )}
-          <Text style={isUser ? styles.userText : styles.botText}>
-            {message.text}
-          </Text>
-
-          {message.firstAid && (
-            <View style={styles.protocolContainer}>
-              <Text style={styles.protocolTitle}>{message.firstAid.title}</Text>
-              {message.firstAid.instructions.map((step, index) => (
-                <Text key={index} style={styles.protocolSteps}>
-                  • {step}
-                </Text>
-              ))}
-
-              {message.triageLevel &&
-                message.triageLevel !== TriageLevel.ROUTINE && (
-                  <View style={styles.criticalActionContainer}>
-                    <Text style={styles.emergencyWarningText}>
-                      CRITICAL: {triageLevel.toUpperCase()}
-                    </Text>
-                    <View style={styles.divider} />
-                    <IconButton
-                      icon="phone"
-                      mode="contained"
-                      containerColor="#D32F2F"
-                      iconColor="white"
-                      size={30}
-                      style={styles.emergencyButton}
-                      onPress={() => Linking.openURL("tel:999")}
-                    />
-                    <Text style={styles.tapToCall}>
-                      Tap to call Emergency Services
-                    </Text>
-                  </View>
-                )}
-            </View>
-          )}
-
-          <Text
-            style={[
-              styles.timestamp,
-              isUser ? styles.userTimestamp : styles.botTimestamp,
-            ]}
-          >
-            {message.timestamp.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
-        </View>
-
-        {message.confidence && !isUser && (
-          <View style={styles.badgeContainer}>
-            <View
-              style={[
-                styles.dot,
-                { backgroundColor: getConfidenceColor(message.confidence) },
-              ]}
-            />
-            <Text style={styles.confidenceText}>
-              AI Confidence: {(message.confidence * 100).toFixed(1)}%
-            </Text>
-          </View>
-        )}
-      </View>
-    );
-  };
-
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView
@@ -405,9 +450,11 @@ export default function ChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? headerHeight : 0}
       >
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <MessageItem message={item} />}
           contentContainerStyle={[
             styles.messagesContent,
             {
@@ -416,10 +463,23 @@ export default function ChatScreen() {
                 : Math.max(insets.bottom, 32),
             },
           ]}
+          ListHeaderComponent={
+            <View style={styles.legendContainer}>
+              <Chip
+                icon="information-outline"
+                onPress={() => setIsLegendVisible(true)}
+                style={styles.legendChip}
+                textStyle={styles.legendChipText}
+              >
+                Triage Guide
+              </Chip>
+            </View>
+          }
           keyboardShouldPersistTaps="handled"
-        >
-          {messages.map(renderMessage)}
-        </ScrollView>
+          onContentSizeChange={() =>
+            flatListRef.current?.scrollToEnd({ animated: true })
+          }
+        />
 
         <View
           onLayout={(e) => setInputHeight(e.nativeEvent.layout.height)}
@@ -490,6 +550,69 @@ export default function ChatScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={isLegendVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsLegendVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.legendModalContent}>
+            <View style={styles.legendModalHeader}>
+              <Text variant="titleLarge" style={styles.legendModalTitle}>
+                Triage Guide
+              </Text>
+              <IconButton
+                icon="close"
+                size={20}
+                onPress={() => setIsLegendVisible(false)}
+              />
+            </View>
+            <Divider />
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendDot, { backgroundColor: "#D32F2F" }]}
+              />
+              <View style={styles.legendTextContainer}>
+                <Text style={styles.legendLabel}>CRITICAL</Text>
+                <Text style={styles.legendDescription}>
+                  Life-threatening emergency. Call emergency services
+                  immediately.
+                </Text>
+              </View>
+            </View>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendDot, { backgroundColor: "#F57C00" }]}
+              />
+              <View style={styles.legendTextContainer}>
+                <Text style={styles.legendLabel}>URGENT</Text>
+                <Text style={styles.legendDescription}>
+                  Serious condition. Requires professional medical attention
+                  soon.
+                </Text>
+              </View>
+            </View>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendDot, { backgroundColor: "#388E3C" }]}
+              />
+              <View style={styles.legendTextContainer}>
+                <Text style={styles.legendLabel}>ROUTINE</Text>
+                <Text style={styles.legendDescription}>
+                  Minor injury or condition. Can be managed with standard first
+                  aid.
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.legendDisclaimer}>
+              Note: AI assessments are for guidance only. Always trust your
+              instincts and seek professional help if unsure.
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -661,5 +784,74 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#495057",
     fontWeight: "600",
+  },
+  legendContainer: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  legendChip: {
+    backgroundColor: "#e9ecef",
+    height: 32,
+  },
+  legendChipText: {
+    fontSize: 12,
+    color: "#495057",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  legendModalContent: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 20,
+    width: "100%",
+    maxWidth: 400,
+    elevation: 5,
+  },
+  legendModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  legendModalTitle: {
+    fontWeight: "700",
+  },
+  legendItem: {
+    flexDirection: "row",
+    marginTop: 20,
+    alignItems: "flex-start",
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginTop: 6,
+    marginRight: 12,
+  },
+  legendTextContainer: {
+    flex: 1,
+  },
+  legendLabel: {
+    fontWeight: "700",
+    fontSize: 14,
+    color: "#212529",
+    marginBottom: 2,
+  },
+  legendDescription: {
+    fontSize: 13,
+    color: "#6c757d",
+    lineHeight: 18,
+  },
+  legendDisclaimer: {
+    marginTop: 24,
+    fontSize: 11,
+    color: "#adb5bd",
+    fontStyle: "italic",
+    textAlign: "center",
   },
 });
