@@ -11,6 +11,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { PaperProvider } from "react-native-paper";
 import "react-native-reanimated";
 import { Classifier } from "../services/HybridEngine";
 
@@ -61,13 +62,15 @@ function RootLayoutNav() {
   return (
     <>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-        <KeyboardProvider>
-          <Stack>
-            <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-          </Stack>
-        </KeyboardProvider>
+        <PaperProvider>
+          <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+          <KeyboardProvider>
+            <Stack>
+              <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+              <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+            </Stack>
+          </KeyboardProvider>
+        </PaperProvider>
       </ThemeProvider>
     </>
   );

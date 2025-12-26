@@ -44,7 +44,6 @@ import {
   Text,
   useTheme,
 } from "react-native-paper";
-import * as Clipboard from "expo-clipboard";
 
 const HUMANE_TEMPLATES = {
   [TriageLevel.CRITICAL]: [
@@ -81,12 +80,11 @@ interface Message {
 
 const MessageItem = React.memo(({ message }: { message: Message }) => {
   const isUser = message.sender === "user";
-  const [copied, setCopied] = useState(false);
   const triageLevel = message.triageLevel || TriageLevel.ROUTINE;
 
   const getConfidenceColor = (score: number) => {
-    if (score > 0.9) return "#4CAF50";
-    if (score > 0.7) return "#FF9800";
+    if (score > 0.65) return "#4CAF50";
+    if (score > 0.5) return "#FF9800";
     return "#F44336";
   };
 
@@ -158,25 +156,6 @@ const MessageItem = React.memo(({ message }: { message: Message }) => {
               minute: "2-digit",
             })}
           </Text>
-
-          <IconButton
-            icon="content-copy"
-            size={18}
-            iconColor={isUser ? "#fff" : "#666"}
-            style={styles.copyButton}
-            onPress={async () => {
-              try {
-                await Clipboard.setStringAsync(message.text);
-                Haptics.selectionAsync();
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1400);
-              } catch (e) {
-                console.warn("Clipboard copy failed", e);
-              }
-            }}
-          />
-
-          {copied && <Text style={styles.copiedLabel}>Copied</Text>}
         </View>
       </View>
 
