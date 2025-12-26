@@ -1,8 +1,9 @@
-import ExpoHfTokenizers from "@naveen521kk/expo-hf-tokenizers";
+const BertWordPieceTokenizer = require("@nlpjs/bert-tokenizer/src/bert-word-piece-tokenizer.js");
+
 import { Asset } from "expo-asset";
-import * as FileSystem from "expo-file-system/legacy";
 import { loadTensorflowModel, TensorflowModel } from "react-native-fast-tflite";
 import anchorsData from "../assets/models/all-MiniLM-L6-v2/anchors.json";
+import { getVocabContent } from "../utils/ST_Vocab";
 
 // STRICT SPECS: 128 tokens
 const MAX_SEQ_LEN = 128;
@@ -17,7 +18,7 @@ class SemanticEngine {
   private anchors: Record<string, number[]> = anchorsData;
   private isInitializing = false;
   private tokenizer: any = null;
-  private tokenizerDir = `${FileSystem.documentDirectory}tokenizer/`;
+  // private tokenizerDir = `${FileSystem.documentDirectory}tokenizer/`;
 
   /**
    * PUBLIC API: Exactly matches your original ClassifierEngine.ts
@@ -33,35 +34,50 @@ class SemanticEngine {
 
     this.isInitializing = true;
     try {
-      const dirInfo = await FileSystem.getInfoAsync(this.tokenizerDir);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(this.tokenizerDir, {
-          intermediates: true,
-        });
-      }
+      // const dirInfo = await FileSystem.getInfoAsync(this.tokenizerDir);
+      // if (!dirInfo.exists) {
+      //   await FileSystem.makeDirectoryAsync(this.tokenizerDir, {
+      //     intermediates: true,
+      //   });
+      // }
 
       // 2. Map your local files to their require paths
-      const assetMap: Record<string, any> = {
-        "tokenizer.json": require("../assets/models/all-MiniLM-L6-v2/tokenizer.json"),
-        "config.json": require("../assets/models/all-MiniLM-L6-v2/config.json"),
-        "special_tokens_map.json": require("../assets/models/all-MiniLM-L6-v2/special_tokens_map.json"),
-        "tokenizer_config.json": require("../assets/models/all-MiniLM-L6-v2/tokenizer_config.json"),
-        "vocab.txt": require("../assets/models/all-MiniLM-L6-v2/vocab.txt"),
-      };
+      // const assetMap: Record<string, string> = {
+      //   "tokenizer.json": "../assets/models/all-MiniLM-L6-v2/tokenizer.json",
+      //   "config.json": "../assets/models/all-MiniLM-L6-v2/config.json",
+      //   "special_tokens_map.json":
+      //     "../assets/models/all-MiniLM-L6-v2/special_tokens_map.json",
+      //   "tokenizer_config.json":
+      //     "../assets/models/all-MiniLM-L6-v2/tokenizer_config.json",
+      //   "vocab.txt": "../assets/models/all-MiniLM-L6-v2/vocab.txt",
+      // };
 
-      // 3. Copy each asset from the bundle to the FileSystem
-      for (const [filename, module] of Object.entries(assetMap)) {
-        const asset = Asset.fromModule(module);
-        await asset.downloadAsync(); // Ensures it's available locally
+      // // 3. Copy each asset from the bundle to the FileSystem
+      // for (const [filename, module] of Object.entries(assetMap)) {
+      //   console.log(`Processing file: ${filename}`);
+      //   const asset = Asset.fromModule({
+      //     url: module,
+      //     width: null,
+      //     height: null,
+      //   });
+      //   console.log(`Preparing asset: ${filename}`, asset);
+      //   await asset.downloadAsync(); // Ensures it's available locally
 
-        const targetPath = `${this.tokenizerDir}${filename}`;
-        const fileCheck = await FileSystem.getInfoAsync(targetPath);
+      //   const targetPath = `${this.tokenizerDir}${filename}`;
+      //   const fileCheck = await FileSystem.getInfoAsync(targetPath);
 
-        if (!fileCheck.exists) {
-          // Copy from the internal asset URI to our accessible folder
-          await FileSystem.copyAsync({ from: asset.localUri!, to: targetPath });
-        }
-      }
+      //   console.log(`Checking file: ${targetPath}`, fileCheck);
+
+      //   if (!fileCheck.exists) {
+      //     // Copy from the internal asset URI to our accessible folder
+      //     await FileSystem.copyAsync({ from: asset.localUri!, to: targetPath });
+      //   }
+      // }
+
+      this.tokenizer = new BertWordPieceTokenizer({ lowercase: true });
+      const vocabContent = await getVocabContent();
+      this.tokenizer.loadDictionary(vocabContent);
+
       // 1. Load the Sentence Transformer TFLite Model
       const modelAsset = Asset.fromModule(
         require("../assets/models/all-MiniLM-L6-v2/sentence_transformer.tflite"),
@@ -72,8 +88,12 @@ class SemanticEngine {
       // this.tokenizer.loadDictionary(vocabData);
 
       console.log("✅ Semantic Engine: Ready (Sentence Transformer Loaded)");
+      // this.model = null;
+      // this.isInitializing = false;
+      // throw new Error("Forced error for testing");
     } catch (e) {
       console.error("❌ Failed to load Semantic Model", e);
+      console.log(e);
     } finally {
       this.isInitializing = false;
     }
@@ -88,25 +108,16 @@ class SemanticEngine {
       if (!this.model) throw new Error("Model not initialized");
     }
 
-    // 1. Tokenize sequence into 256 tokens
-    // const { inputIds, attentionMask } = tokenizeWordPiece(rawText, MAX_SEQ_LEN);
-
-    const encoded = await ExpoHfTokenizers.encode(this.tokenizerDir, rawText);
-
-    const inputIds = new Int32Array(encoded.ids.map(Number));
-    const attentionMask = new Int32Array(encoded.attentionMask.map(Number));
-
-    // const result = await ExpoHfTokenizers.encode(
-    //   "../assets/models/all-MiniLM-L6-v2/vocab.json",
-    //   rawText,
-    // );
-
-    console.log(`🧾 Tokenization Result:`, encoded);
-
-    console.log(
-      `🧠 Semantic Engine: Running inference on input (${rawText.length} chars)`,
+    const encoded = this.tokenizer.encode(
+      rawText,
+      undefined,
+      MAX_SEQ_LEN,
+      MAX_SEQ_LEN,
     );
 
+    // 2. Prepare Int32Arrays (required by TFLite for BERT models)
+    const inputIds = new Int32Array(encoded.ids);
+    const attentionMask = new Int32Array(encoded.attentionMask);
     // 2. Run Inference with 3 input tensors as per transformer specs
     // Inputs: [input_ids, attention_mask, token_type_ids]
     const output = await this.model!.run([

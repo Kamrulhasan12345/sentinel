@@ -21,8 +21,8 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // 1. Import your new high-performance services
+import { Classifier } from "../services/HybridEngine";
 import { FirstAidContent, KnowledgeBase } from "../services/KnowledgeBase";
-import { Classifier } from "../services/SemanticEngine";
 
 import { SEVERITY_MAP, TriageLevel } from "@/constants/SeverityMap";
 import { useVoiceToText } from "@/hooks/useVoiceToText";

@@ -50,6 +50,9 @@ class ClassifierEngine {
       console.log(
         `✅ Classifier Engine: Ready (${this.labels.length} labels loaded)`,
       );
+      // this.isInitializing = false;
+      // this.model = null;
+      // throw new Error("Forced error for testing");
     } catch (error) {
       console.error("❌ Failed to initialize Classifier:", error);
     } finally {

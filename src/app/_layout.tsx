@@ -11,7 +11,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
-import { Classifier } from "../services/SemanticEngine";
+import { Classifier } from "../services/HybridEngine";
 
 export {
   // Catch any errors thrown by the Layout component.
