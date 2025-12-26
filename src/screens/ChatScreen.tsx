@@ -5,7 +5,6 @@ import {
   Alert,
   FlatList,
   Image,
-  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -13,7 +12,7 @@ import {
   TextInput as RNTextInput,
   StyleSheet,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import Animated, {
   interpolate,
@@ -382,25 +381,7 @@ export default function ChatScreen() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [inputHeight, setInputHeight] = useState(0);
-
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener("keyboardDidShow", (e) => {
-      setKeyboardVisible(true);
-      setKeyboardHeight(e.endCoordinates?.height || 0);
-    });
-    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => {
-      setKeyboardVisible(false);
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
 
   useEffect(() => {
     setTimeout(() => {
@@ -613,9 +594,7 @@ export default function ChatScreen() {
           contentContainerStyle={[
             styles.messagesContent,
             {
-              paddingBottom: isKeyboardVisible
-                ? keyboardHeight + Math.max(insets.bottom, 12)
-                : Math.max(insets.bottom, 32),
+              paddingBottom: 16, // Match message margin for consistent spacing
             },
           ]}
           ListHeaderComponent={
@@ -641,7 +620,7 @@ export default function ChatScreen() {
           style={[
             styles.inputWrapper,
             {
-              paddingBottom: insets.bottom + 20, // Move up slightly and respect safe area
+              paddingBottom: insets.bottom + 10, // Move up slightly and respect safe area
             },
           ]}
         >
@@ -905,7 +884,7 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8f9fa" },
   messagesContainer: { flex: 1 },
-  messagesContent: { padding: 16, paddingBottom: 32 },
+  messagesContent: { padding: 16, paddingBottom: 16 },
   messageContainer: { marginBottom: 16, maxWidth: "85%" },
   userMessageContainer: { alignSelf: "flex-end" },
   botMessageContainer: { alignSelf: "flex-start" },
