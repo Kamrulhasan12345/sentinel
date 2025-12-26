@@ -5,16 +5,14 @@ import {
   Alert,
   FlatList,
   Image,
-  Keyboard,
-  KeyboardAvoidingView,
   Linking,
   Modal,
-  Platform,
   TextInput as RNTextInput,
   StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -46,6 +44,7 @@ import {
   Text,
   useTheme,
 } from "react-native-paper";
+import * as Clipboard from "expo-clipboard";
 
 const HUMANE_TEMPLATES = {
   [TriageLevel.CRITICAL]: [
@@ -82,6 +81,7 @@ interface Message {
 
 const MessageItem = React.memo(({ message }: { message: Message }) => {
   const isUser = message.sender === "user";
+  const [copied, setCopied] = useState(false);
   const triageLevel = message.triageLevel || TriageLevel.ROUTINE;
 
   const getConfidenceColor = (score: number) => {
@@ -146,17 +146,38 @@ const MessageItem = React.memo(({ message }: { message: Message }) => {
           </View>
         )}
 
-        <Text
-          style={[
-            styles.timestamp,
-            isUser ? styles.userTimestamp : styles.botTimestamp,
-          ]}
-        >
-          {message.timestamp.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
+        <View style={styles.timestampRow}>
+          <Text
+            style={[
+              styles.timestamp,
+              isUser ? styles.userTimestamp : styles.botTimestamp,
+            ]}
+          >
+            {message.timestamp.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+
+          <IconButton
+            icon="content-copy"
+            size={18}
+            iconColor={isUser ? "#fff" : "#666"}
+            style={styles.copyButton}
+            onPress={async () => {
+              try {
+                await Clipboard.setStringAsync(message.text);
+                Haptics.selectionAsync();
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1400);
+              } catch (e) {
+                console.warn("Clipboard copy failed", e);
+              }
+            }}
+          />
+
+          {copied && <Text style={styles.copiedLabel}>Copied</Text>}
+        </View>
       </View>
 
       {message.confidence && !isUser && (
@@ -383,25 +404,6 @@ export default function ChatScreen() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [inputHeight, setInputHeight] = useState(0);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-
-  useEffect(() => {
-    const showEvent =
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent =
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-
-    const showSub = Keyboard.addListener(showEvent, () =>
-      setIsKeyboardVisible(true),
-    );
-    const hideSub = Keyboard.addListener(hideEvent, () =>
-      setIsKeyboardVisible(false),
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
 
   useEffect(() => {
     setTimeout(() => {
@@ -600,113 +602,99 @@ export default function ChatScreen() {
   // };
 
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={100}
-      // keyboardVerticalOffset={
-      //   headerHeight +
-      //   (Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0)
-      // }
-      >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <MessageItem message={item} />}
-          contentContainerStyle={[
-            styles.messagesContent,
-            {
-              paddingBottom: 16, // Match message margin for consistent spacing
-            },
-          ]}
-          ListHeaderComponent={
-            <View style={styles.legendContainer}>
-              <Chip
-                icon="information-outline"
-                onPress={() => setIsLegendVisible(true)}
-                style={styles.legendChip}
-                textStyle={styles.legendChipText}
-              >
-                Triage Guide
-              </Chip>
-            </View>
-          }
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
-        />
-
-        <View
-          onLayout={(e) => setInputHeight(e.nativeEvent.layout.height)}
-          style={[
-            styles.inputWrapper,
-            {
-              paddingBottom: isKeyboardVisible
-                ? 16
-                : Math.max(insets.bottom, 12) + 12,
-            },
-          ]}
-        >
-          <View style={styles.inputContainer}>
-            <RNTextInput
-              style={styles.textInput}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Type a message..."
-              placeholderTextColor="#999"
-              selectionColor="#007AFF"
-              cursorColor="#007AFF"
-              editable={!isLoading}
-              multiline
-            />
-
-            <View style={styles.micContainer}>
-              {showHoldMessage && (
-                <View style={styles.holdTooltip}>
-                  <Text style={styles.holdTooltipText} numberOfLines={1}>
-                    Hold to Talk
-                  </Text>
-                </View>
-              )}
-              {isListening && (
-                <Animated.View
-                  style={[styles.pulseCircle, animatedPulseStyle]}
-                />
-              )}
-              <IconButton
-                icon={isListening ? "microphone" : "microphone-outline"}
-                mode={isListening ? "contained" : undefined}
-                containerColor={isListening ? "#D32F2F" : "transparent"}
-                iconColor={isListening ? "white" : "#666"}
-                size={24}
-                onPressIn={handleStartListening}
-                onPressOut={handleStopListening}
-                style={styles.iconButton}
-              />
-            </View>
-
-            {isLoading ? (
-              <ActivityIndicator
-                animating={true}
-                size="small"
-                style={styles.loader}
-              />
-            ) : (
-              <IconButton
-                icon="send"
-                size={24}
-                onPress={handleSendMessage}
-                disabled={!inputText.trim()}
-                iconColor={inputText.trim() ? "#007AFF" : "#ccc"}
-                style={styles.iconButton}
-              />
-            )}
+    <KeyboardAwareScrollView
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.container}
+    >
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <MessageItem message={item} />}
+        contentContainerStyle={[
+          styles.messagesContent,
+          {
+            paddingBottom: 16, // Match message margin for consistent spacing
+          },
+        ]}
+        ListHeaderComponent={
+          <View style={styles.legendContainer}>
+            <Chip
+              icon="information-outline"
+              onPress={() => setIsLegendVisible(true)}
+              style={styles.legendChip}
+              textStyle={styles.legendChipText}
+            >
+              Triage Guide
+            </Chip>
           </View>
+        }
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() =>
+          flatListRef.current?.scrollToEnd({ animated: true })
+        }
+      />
+      <View
+        onLayout={(e) => setInputHeight(e.nativeEvent.layout.height)}
+        style={[
+          styles.inputWrapper,
+          {
+            paddingBottom: insets.bottom + 12,
+          },
+        ]}
+      >
+        <View style={styles.inputContainer}>
+          <RNTextInput
+            style={styles.textInput}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Type a message..."
+            placeholderTextColor="#999"
+            selectionColor="#007AFF"
+            cursorColor="#007AFF"
+            editable={!isLoading}
+            multiline
+          />
+          <View style={styles.micContainer}>
+            {showHoldMessage && (
+              <View style={styles.holdTooltip}>
+                <Text style={styles.holdTooltipText} numberOfLines={1}>
+                  Hold to Talk
+                </Text>
+              </View>
+            )}
+            {isListening && (
+              <Animated.View style={[styles.pulseCircle, animatedPulseStyle]} />
+            )}
+            <IconButton
+              icon={isListening ? "microphone" : "microphone-outline"}
+              mode={isListening ? "contained" : undefined}
+              containerColor={isListening ? "#D32F2F" : "transparent"}
+              iconColor={isListening ? "white" : "#666"}
+              size={24}
+              onPressIn={handleStartListening}
+              onPressOut={handleStopListening}
+              style={styles.iconButton}
+            />
+          </View>
+          {isLoading ? (
+            <ActivityIndicator
+              animating={true}
+              size="small"
+              style={styles.loader}
+            />
+          ) : (
+            <IconButton
+              icon="send"
+              size={24}
+              onPress={handleSendMessage}
+              disabled={!inputText.trim()}
+              iconColor={inputText.trim() ? "#007AFF" : "#ccc"}
+              style={styles.iconButton}
+            />
+          )}
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <Modal
         visible={isLegendVisible}
@@ -903,7 +891,7 @@ export default function ChatScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </KeyboardAwareScrollView>
   );
 }
 
@@ -970,6 +958,21 @@ const styles = StyleSheet.create({
     color: "#495057",
     lineHeight: 22,
     marginBottom: 4,
+  },
+  timestampRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+  },
+  copyButton: {
+    margin: 0,
+    marginLeft: 6,
+  },
+  copiedLabel: {
+    fontSize: 12,
+    color: "#6c757d",
+    marginLeft: 6,
+    fontWeight: "700",
   },
   inputWrapper: {
     backgroundColor: "#ffffff",

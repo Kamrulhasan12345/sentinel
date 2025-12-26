@@ -10,6 +10,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
 import { Classifier } from "../services/HybridEngine";
 
@@ -59,16 +60,15 @@ function RootLayoutNav() {
 
   return (
     <>
-      {/* <SafeAreaView style={{ flex: 1 }}> */}
-      <StatusBar style="auto" />
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-        </Stack>
+        <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+        <KeyboardProvider>
+          <Stack>
+            <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+          </Stack>
+        </KeyboardProvider>
       </ThemeProvider>
-      {/* //{" "} */}
-      {/* </SafeAreaView> */}
     </>
   );
 }

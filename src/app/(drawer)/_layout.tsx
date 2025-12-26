@@ -32,7 +32,6 @@ export default function DrawerLayout() {
           },
           drawerLabelStyle: {
             fontWeight: "600",
-            marginLeft: -16,
           },
           drawerItemStyle: {
             borderRadius: 12,
@@ -44,7 +43,7 @@ export default function DrawerLayout() {
         <Drawer.Screen
           name="index"
           options={{
-            drawerLabel: "Chat Assistant",
+            drawerLabel: "Chat",
             title: "Sentinel AI",
             drawerIcon: ({ color, size }) => (
               <MaterialCommunityIcons
@@ -58,7 +57,7 @@ export default function DrawerLayout() {
         <Drawer.Screen
           name="library"
           options={{
-            drawerLabel: "Medical Library",
+            drawerLabel: "Library",
             title: "Library",
             drawerIcon: ({ color, size }) => (
               <MaterialCommunityIcons
