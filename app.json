@@ -1,70 +1,70 @@
 {
-  "expo": {
-    "name": "guardian-buet",
-    "slug": "guardian-buet",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "guardianbuet",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "NSCameraUsageDescription": "Guardian BUET needs camera access to capture medical images for emergency triage analysis.",
-        "NSPhotoLibraryUsageDescription": "Guardian BUET needs photo library access to analyze medical images for emergency triage.",
-        "NSMicrophoneUsageDescription": "Guardian BUET needs microphone access for voice input during emergencies."
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.mohammadkh.guardianbuet",
-      "permissions": [
-        "CAMERA",
-        "READ_MEDIA_IMAGES",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "react-native-fast-tflite",
-        {
-          "enableAndroidGpuLibraries": true
-        }
-      ],
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Guardian BUET needs camera access to capture medical images for emergency triage analysis."
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Guardian BUET needs photo library access to analyze medical images for emergency triage."
-        }
-      ],
-      "expo-speech-recognition"
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
-  }
+	"expo": {
+		"name": "guardian-buet",
+		"slug": "guardian-buet",
+		"version": "1.0.0",
+		"orientation": "portrait",
+		"icon": "./assets/images/icon.png",
+		"scheme": "guardianbuet",
+		"userInterfaceStyle": "automatic",
+		"newArchEnabled": true,
+		"splash": {
+			"image": "./assets/images/splash-icon.png",
+			"resizeMode": "contain",
+			"backgroundColor": "#ffffff"
+		},
+		"ios": {
+			"supportsTablet": true,
+			"infoPlist": {
+				"NSCameraUsageDescription": "Guardian BUET needs camera access to capture medical images for emergency triage analysis.",
+				"NSPhotoLibraryUsageDescription": "Guardian BUET needs photo library access to analyze medical images for emergency triage.",
+				"NSMicrophoneUsageDescription": "Guardian BUET needs microphone access for voice input during emergencies."
+			}
+		},
+		"android": {
+			"adaptiveIcon": {
+				"foregroundImage": "./assets/images/adaptive-icon.png",
+				"backgroundColor": "#ffffff"
+			},
+			"edgeToEdgeEnabled": true,
+			"predictiveBackGestureEnabled": false,
+			"package": "com.mohammadkh.guardianbuet",
+			"permissions": [
+				"CAMERA",
+				"READ_MEDIA_IMAGES",
+				"READ_EXTERNAL_STORAGE",
+				"WRITE_EXTERNAL_STORAGE"
+			]
+		},
+		"web": {
+			"bundler": "metro",
+			"output": "static",
+			"favicon": "./assets/images/favicon.png"
+		},
+		"plugins": [
+			"expo-router",
+			[
+				"react-native-fast-tflite",
+				{
+					"enableAndroidGpuLibraries": true
+				}
+			],
+			[
+				"expo-camera",
+				{
+					"cameraPermission": "Guardian BUET needs camera access to capture medical images for emergency triage analysis."
+				}
+			],
+			[
+				"expo-image-picker",
+				{
+					"photosPermission": "Guardian BUET needs photo library access to analyze medical images for emergency triage."
+				}
+			],
+			"expo-speech-recognition"
+		],
+		"experiments": {
+			"typedRoutes": true
+		}
+	}
 }

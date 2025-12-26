@@ -1,10 +1,9 @@
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
 import { loadTensorflowModel, TensorflowModel } from "react-native-fast-tflite";
+import { AI_CONFIG } from "../constants/Config";
 import { STOP_WORDS } from "../constants/StopWords";
 import { Tokenizer } from "./Vocabulary";
-
-const MAX_LEN = 15; // Must match your Python training code
 
 class ClassifierEngine {
   private model: TensorflowModel | null = null;
@@ -87,10 +86,10 @@ class ClassifierEngine {
 
     // Create a Float32Array for the Tensor (Zero-padded)
     // Create a 15-slot buffer of zeros
-    const inputBuffer = new Float32Array(MAX_LEN).fill(0);
+    const inputBuffer = new Float32Array(AI_CONFIG.MAX_LEN).fill(0);
 
     // POST-PADDING: Words at the START, zeros at the END
-    tokens.slice(0, MAX_LEN).forEach((token, i) => {
+    tokens.slice(0, AI_CONFIG.MAX_LEN).forEach((token, i) => {
       inputBuffer[i] = token;
     });
 

@@ -1,4 +1,5 @@
 import intentsData from "../assets/models/intents.json";
+import { AI_CONFIG } from "../constants/Config";
 
 export interface FirstAidContent {
   tag: string;
@@ -39,13 +40,11 @@ class KnowledgeBaseService {
    * Safety Filter: Decide if the AI confidence is high enough to show content.
    */
   getValidatedContent(tag: string, confidence: number): FirstAidContent | null {
-    const CONFIDENCE_THRESHOLD = 0.65; // 65% certainty required for medical advice
-
-    if (confidence < CONFIDENCE_THRESHOLD) {
+    if (confidence < AI_CONFIG.CONFIDENCE_THRESHOLD) {
       console.log(
-        `⚠️ KnowledgeBase: Confidence too low (${(confidence * 100).toFixed(
-          1,
-        )}% < ${(CONFIDENCE_THRESHOLD * 100).toFixed(0)}%). Filtering result.`,
+        `📉 KnowledgeBase: Confidence too low (${(confidence * 100).toFixed(
+          0,
+        )}% < ${(AI_CONFIG.CONFIDENCE_THRESHOLD * 100).toFixed(0)}%). Filtering result.`,
       );
       return null;
     }

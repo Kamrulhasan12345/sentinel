@@ -1,0 +1,4 @@
+export const AI_CONFIG = {
+  MAX_LEN: 15,
+  CONFIDENCE_THRESHOLD: 0.65,
+};
