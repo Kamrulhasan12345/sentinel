@@ -1,6 +1,5 @@
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
-import pluralize from "pluralize";
 import { loadTensorflowModel, TensorflowModel } from "react-native-fast-tflite";
 import { STOP_WORDS } from "../constants/StopWords";
 import { Tokenizer } from "./Vocabulary";
@@ -69,9 +68,7 @@ class ClassifierEngine {
       .split(/\s+/)
       .filter((w) => w && !STOP_WORDS.has(w));
     console.log(`🧹 Cleaned text: "${words.join(" ")}"`);
-    const tokens = words.map((w) =>
-      Tokenizer.getWordToken(pluralize.singular(w)),
-    );
+    const tokens = words.map((w) => Tokenizer.getWordToken(w));
     console.log(`🔢 Tokens: [${tokens.join(", ")}]`);
     return tokens;
   }
