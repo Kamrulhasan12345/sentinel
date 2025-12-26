@@ -1,33 +1,34 @@
-import vocab from "../assets/models/vocab.json"; // Use the vocab.json from the HuggingFace model
 
-export function tokenizeWordPiece(text: string, maxLen: number) {
-  const tokens = text.toLowerCase().split(/\s+/);
-  let inputIds: number[] = [vocab["[CLS]"]]; // Start with Classification token
+// const vocab = vocabData as Record<string, number>;
 
-  for (const word of tokens) {
-    // Basic WordPiece logic: find longest sub-word in vocab
-    if (vocab[word]) {
-      inputIds.push(vocab[word]);
-    } else {
-      // Fallback for unknown words (simplified for mobile performance)
-      inputIds.push(vocab["[UNK]"]);
-    }
-  }
+// export function tokenizeWordPiece(text: string, maxLen: number) {
+//   const tokens = text.toLowerCase().split(/\s+/);
+//   let inputIds: number[] = [vocab["[CLS]"]]; // Start with Classification token
 
-  inputIds.push(vocab["[SEP]"]); // End with Separator token
+//   for (const word of tokens) {
+//     // Basic WordPiece logic: find longest sub-word in vocab
+//     if (vocab[word]) {
+//       inputIds.push(vocab[word]);
+//     } else {
+//       // Fallback for unknown words (simplified for mobile performance)
+//       inputIds.push(vocab["[UNK]"]);
+//     }
+//   }
 
-  // Padding to reach fixed MAX_SEQ_LEN
-  const attentionMask = new Array(maxLen).fill(0);
-  for (let i = 0; i < inputIds.length && i < maxLen; i++) {
-    attentionMask[i] = 1;
-  }
+//   inputIds.push(vocab["[SEP]"]); // End with Separator token
 
-  while (inputIds.length < maxLen) {
-    inputIds.push(vocab["[PAD]"] || 0);
-  }
+//   // Padding to reach fixed MAX_SEQ_LEN
+//   const attentionMask = new Array(maxLen).fill(0);
+//   for (let i = 0; i < inputIds.length && i < maxLen; i++) {
+//     attentionMask[i] = 1;
+//   }
 
-  return {
-    inputIds: inputIds.slice(0, maxLen),
-    attentionMask: attentionMask.slice(0, maxLen),
-  };
-}
+//   while (inputIds.length < maxLen) {
+//     inputIds.push(vocab["[PAD]"] || 0);
+//   }
+
+//   return {
+//     inputIds: inputIds.slice(0, maxLen),
+//     attentionMask: attentionMask.slice(0, maxLen),
+//   };
+// }
