@@ -47,6 +47,28 @@ import {
   useTheme,
 } from "react-native-paper";
 
+const HUMANE_TEMPLATES = {
+  [TriageLevel.CRITICAL]: [
+    "Take a deep breath. This looks like {title}. Please follow these steps immediately.",
+    "Stay calm. This appears to be {title}. Act on these instructions now.",
+    "I'm here to help. This looks like {title}. Please follow these steps right away.",
+  ],
+  [TriageLevel.URGENT]: [
+    "This sounds like {title}. You should seek medical attention soon. Here is what to do now:",
+    "It looks like {title}. Professional help is recommended, but follow these steps in the meantime.",
+    "Based on what you've said, this sounds like {title}. Here's how to handle it for now.",
+  ],
+  [TriageLevel.ROUTINE]: [
+    "This sounds like {title}. Here is how you can manage it:",
+    "It appears to be {title}. You can follow these steps for care:",
+    "I can help with that. It sounds like {title}. Here's what you should do.",
+  ],
+  UNCERTAIN: [
+    "I'm not 100% sure, but this might be {title}. If this doesn't feel right, please see a doctor.",
+    "I'm having a bit of trouble being certain, but it could be {title}. Please use caution.",
+  ],
+};
+
 interface Message {
   id: string;
   text: string;
@@ -146,7 +168,7 @@ const MessageItem = React.memo(({ message }: { message: Message }) => {
             ]}
           />
           <Text style={styles.confidenceText}>
-            AI Confidence: {(message.confidence * 100).toFixed(1)}%
+            AI Confidence: {(message.confidence * 100).toFixed(0)}%
           </Text>
         </View>
       )}
@@ -411,6 +433,7 @@ export default function ChatScreen() {
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
 
+    const isFirstMessage = messages.length === 0;
     const userMessage = inputText.trim();
     setInputText("");
     addMessage(userMessage, "user");
@@ -429,8 +452,24 @@ export default function ChatScreen() {
       const severity = SEVERITY_MAP[prediction.tag] || TriageLevel.ROUTINE;
 
       if (content) {
+        // Select template category
+        const isUncertain = prediction.confidence < 0.7;
+        const templates = isUncertain
+          ? HUMANE_TEMPLATES.UNCERTAIN
+          : HUMANE_TEMPLATES[severity];
+
+        // Pick random template
+        const template =
+          templates[Math.floor(Math.random() * templates.length)];
+        let responseText = template.replace("{title}", content.title);
+
+        // Add supportive prefix for first critical message
+        if (isFirstMessage && severity === TriageLevel.CRITICAL) {
+          responseText = "Stay calm, I'm here to help. " + responseText;
+        }
+
         addMessage(
-          `I've identified this as ${content.title}.`,
+          responseText,
           "bot",
           undefined,
           content,
@@ -439,13 +478,16 @@ export default function ChatScreen() {
         );
       } else {
         addMessage(
-          "I'm not entirely sure about that. If it's an emergency, please call 911 immediately.",
+          "I'm really sorry, but I can't identify that based on the description. If this is an emergency, please call 999 immediately. Otherwise, you can try describing the symptoms differently or check the Medical Library.",
           "bot",
         );
       }
     } catch (error) {
       console.error("Analysis error:", error);
-      addMessage("System error. Please seek medical help if urgent.", "bot");
+      addMessage(
+        "I'm sorry, I've encountered a technical problem. If this is urgent, please seek medical help immediately.",
+        "bot",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -599,10 +641,7 @@ export default function ChatScreen() {
           style={[
             styles.inputWrapper,
             {
-              paddingBottom:
-                Platform.OS === "ios"
-                  ? Math.max(insets.bottom, 8)
-                  : Math.max(insets.bottom, 8),
+              paddingBottom: insets.bottom + 20, // Move up slightly and respect safe area
             },
           ]}
         >
@@ -902,7 +941,7 @@ const styles = StyleSheet.create({
   messageImage: {
     width: "100%",
     height: 200,
-    borderRadius: 16,
+    borderRadius: 12,
     marginBottom: 10,
     resizeMode: "cover",
   },
@@ -910,7 +949,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     padding: 16,
     backgroundColor: "#f8f9fa",
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#e9ecef",
   },
@@ -932,7 +971,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#f1f3f5",
     paddingHorizontal: 12,
-    paddingTop: 10,
+    paddingTop: 12,
   },
   inputContainer: {
     flexDirection: "row",
@@ -978,7 +1017,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#343a40",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 12,
     minWidth: 100,
     alignItems: "center",
   },
@@ -992,7 +1031,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 20,
     backgroundColor: "#fff5f5",
-    borderRadius: 20,
+    borderRadius: 12,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#ffe3e3",
