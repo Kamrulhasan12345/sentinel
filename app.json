@@ -64,7 +64,8 @@
         }
       ],
       "expo-speech-recognition",
-      "expo-asset"
+      "expo-asset",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

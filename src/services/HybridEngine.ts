@@ -1,3 +1,4 @@
+import { Analytics } from "./AnalyticsService";
 import { Classifier as CNNClassifier } from "./CNNEngine";
 import { Classifier as STClassifier } from "./STEngine";
 
@@ -35,6 +36,7 @@ class HybridEngine {
   async predict(rawText: string) {
     console.log("🔀 Hybrid Engine: Starting analysis...");
     let cnnResult = null;
+    const startTime = Date.now();
 
     try {
       // 1. Try CNN Classifier first
@@ -45,24 +47,46 @@ class HybridEngine {
 
       if (cnnResult.confidence > 0.65) {
         console.log("✅ CNN Confidence high enough (>65%). Using CNN result.");
+
+        Analytics.track("prediction_complete", {
+          engine: "CNN",
+          confidence: cnnResult.confidence,
+          duration: Date.now() - startTime,
+        });
+
         return cnnResult;
       }
+
+      Analytics.track("prediction_fallback", {
+        reason: "low_confidence",
+        cnn_confidence: cnnResult.confidence,
+      });
+
       console.log(
         "⚠️ CNN Confidence low. Falling back to Semantic Transformer...",
       );
     } catch (error) {
       console.warn("⚠️ CNN Engine failed or unavailable:", error);
+      Analytics.track("engine_error", { engine: "CNN", error: String(error) });
     }
 
     try {
       // 2. Fallback to Semantic Transformer
       const stResult = await STClassifier.predict(rawText);
+
+      Analytics.track("prediction_complete", {
+        engine: "ST",
+        confidence: stResult.confidence,
+        duration: Date.now() - startTime,
+      });
+
       console.log(
         `📡 ST Confidence: ${(stResult.confidence * 100).toFixed(2)}%`,
       );
       return stResult;
     } catch (error) {
       console.error("❌ ST Engine failed or unavailable:", error);
+      Analytics.track("engine_error", { engine: "ST", error: String(error) });
 
       // Final fallback: If ST fails but we have a CNN result (even if low confidence), use it
       if (cnnResult) {
