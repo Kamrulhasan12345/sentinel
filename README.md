@@ -182,6 +182,14 @@ You can download the latest Android APK from our **[GitHub Releases Page](../../
 
 ---
 
+## 👥 Team Credits
+
+- **Mohammad Kamrul Hasan** (Lead Developer)
+- **Hasibul Islam** (Developer)
+- **Sayeeb Rahman** (Researcher)
+
+---
+
 ## ⚠️ Medical Disclaimer
 
 **Sentinel is a prototype for educational and demonstrative purposes only.**
