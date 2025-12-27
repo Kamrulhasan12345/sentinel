@@ -51,12 +51,12 @@ Sentinel is powered by a custom **Text Classification Model** trained specifical
 
     ```mermaid
       graph TD
-      A[Input Sequence (15 tokens)] --> B[Embedding Layer (32-dim)]
-      B --> C[Conv1D (64 filters, kernel=3)]
-      C --> D[GlobalMaxPooling1D]
-      D --> E[Dense Layer (32 units, ReLU)]
-      E --> F[Dropout (0.4)]
-      F --> G[Output Layer (Softmax)]
+      A["Input Sequence (15 tokens)"] --> B["Embedding Layer (32-dim)"]
+      B --> C["Conv1D (64 filters, kernel=3)"]
+      C --> D["GlobalMaxPooling1D"]
+      D --> E["Dense Layer (32 units, ReLU)"]
+      E --> F["Dropout (0.4)"]
+      F --> G["Output Layer (Softmax)"]
     ```
 
     - **Conv1D**: Detects specific symptom phrases (e.g., "chest pain", "bone sticking out").
