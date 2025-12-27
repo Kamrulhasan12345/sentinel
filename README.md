@@ -50,13 +50,13 @@ Sentinel is powered by a custom **Text Classification Model** trained specifical
     The model utilizes a **1D-Convolutional Neural Network (CNN)** structure, chosen for its ability to detect local patterns (n-grams) in short text sequences.
 
     ```mermaid
-    graph TD
-    A[Input Sequence (15 tokens)] --> B[Embedding Layer (32-dim)];
-    B --> C[Conv1D (64 filters, kernel=3)];
-    C --> D[GlobalMaxPooling1D];
-    D --> E[Dense Layer (32 units, ReLU)];
-    E --> F[Dropout (0.4)];
-    F --> G[Output Layer (Softmax)];
+      graph TD
+      A[Input Sequence (15 tokens)] --> B[Embedding Layer (32-dim)]
+      B --> C[Conv1D (64 filters, kernel=3)]
+      C --> D[GlobalMaxPooling1D]
+      D --> E[Dense Layer (32 units, ReLU)]
+      E --> F[Dropout (0.4)]
+      F --> G[Output Layer (Softmax)]
     ```
 
     - **Conv1D**: Detects specific symptom phrases (e.g., "chest pain", "bone sticking out").
