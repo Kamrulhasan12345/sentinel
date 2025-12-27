@@ -58,7 +58,7 @@ export default function DrawerLayout() {
           name="library"
           options={{
             drawerLabel: "Library",
-            title: "Library",
+            title: "Sentinel Library",
             drawerIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="book-open-variant"

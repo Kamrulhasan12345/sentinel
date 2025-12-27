@@ -1,5 +1,5 @@
-import { Classifier as CNNClassifier } from "./ClassifierEngine";
-import { Classifier as STClassifier } from "./SemanticEngine";
+import { Classifier as CNNClassifier } from "./CNNEngine";
+import { Classifier as STClassifier } from "./STEngine";
 
 /**
  * Hybrid AI System
